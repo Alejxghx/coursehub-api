@@ -1,20 +1,11 @@
 import { Injectable } from '@nestjs/common';
 import { CreateCourseDto } from './dto/create-course.dto.js';
+import { UpdateCourseDto } from './dto/update-course.dto.js';
 
 type Course = {
   id: number;
   title: string;
   level: string;
-};
-
-type CreateCourseInput = {
-  title: string;
-  level: string;
-};
-
-type UpdateCourseInput = {
-  title?: string;
-  level?: string;
 };
 
 @Injectable()
@@ -44,7 +35,7 @@ export class CoursesService {
     return course;
   }
 
-  update(id: number, input: UpdateCourseInput): Course | undefined {
+  update(id: number, input: UpdateCourseDto): Course | undefined {
     const course = this.findOne(id);
 
     if (!course) {
