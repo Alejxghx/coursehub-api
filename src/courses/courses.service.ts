@@ -42,7 +42,13 @@ export class CoursesService {
       return undefined;
     }
 
-    Object.assign(course, input);
+    if (input.title !== undefined) {
+      course.title = input.title;
+    }
+
+    if (input.level !== undefined) {
+      course.level = input.level;
+    }
     return course;
   }
 
