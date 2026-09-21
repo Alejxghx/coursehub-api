@@ -5,9 +5,10 @@ import { WelcomeService } from './welcome.service.js';
 import { WelcomeController } from './welcome.controller.js';
 import { CoursesModule } from './courses/courses.module.js';
 import { StudentsModule } from './students/students.module.js';
+import { EnrollmentsModule } from './enrollments/enrollments.module.js';
 
 @Module({
-  imports: [CoursesModule, StudentsModule],
+  imports: [CoursesModule, StudentsModule, EnrollmentsModule],
   controllers: [AppController, WelcomeController],
   providers: [AppService, WelcomeService],
 })
