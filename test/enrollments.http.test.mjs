@@ -1,10 +1,9 @@
 import 'reflect-metadata';
 import { afterEach, beforeEach, describe, it } from 'node:test';
 import assert from 'node:assert/strict';
-import { NestFactory } from '@nestjs/core';
+import { createTestApp } from './database.mjs';
 import { ValidationPipe } from '@nestjs/common';
 import request from 'supertest';
-import { AppModule } from '../dist/app.module.js';
 
 const student = {
   name: 'Ana Perez',
@@ -19,7 +18,7 @@ describe('Integración de Cursos, Estudiantes y Matrículas', () => {
   let app;
   let api;
   beforeEach(async () => {
-    app = await NestFactory.create(AppModule, { logger: false });
+    app = await createTestApp({ seedCourses: true });
     app.useGlobalPipes(
       new ValidationPipe({ whitelist: true, forbidNonWhitelisted: true }),
     );

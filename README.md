@@ -1,6 +1,52 @@
 # CourseHub API — Cursos, Estudiantes y Matrículas
 
-Evaluación práctica de integración con NestJS. Los tres módulos comparten una sola aplicación y guardan sus datos en listas en memoria. No se utiliza PostgreSQL, TypeORM, entidades ni repositorios. Al reiniciar se pierden estudiantes y matrículas; Cursos inicia con tres cursos de ejemplo (IDs 1, 2 y 3).
+## Sesión 8: PostgreSQL y CRUD persistente
+
+Requisitos: Node.js compatible con NestJS 12, npm y un servidor PostgreSQL disponible.
+Crea la base de datos `coursehub` en PostgreSQL (`CREATE DATABASE coursehub;`).
+Copia `.env.example` a `.env` solamente si todavía no existe y configura:
+
+| Variable | Ejemplo |
+|---|---|
+| DATABASE_HOST | localhost |
+| DATABASE_PORT | 5432 |
+| DATABASE_NAME | coursehub |
+| DATABASE_USER | postgres |
+| DATABASE_PASSWORD | tu contraseña local |
+
+`.env` está excluido de Git. `.env.example` contiene únicamente valores de ejemplo.
+TypeORM registra Course mediante `forFeature` y `autoLoadEntities`; al iniciar,
+`synchronize: true` crea la tabla courses. Esta configuración es para desarrollo;
+en producción se deben utilizar migraciones.
+
+El controlador y los DTOs mantienen el contrato HTTP existente.
+CoursesService usa find, findOneBy, create/save y remove. PostgreSQL genera los IDs.
+GET, PATCH y DELETE de un curso inexistente devuelven 404.
+PATCH conserva los campos omitidos y DELETE devuelve el curso eliminado, incluido su id.
+El listado se ordena por id ascendente: SQL no garantiza un orden implícito.
+
+### Comprobar persistencia manualmente
+
+1. Ejecuta `npm run start:dev`.
+2. Envía POST /courses con `{"title":"Curso persistente de prueba","level":"beginner"}` y anota el id.
+3. Detén la API con Ctrl+C, vuelve a iniciarla y consulta GET /courses/:id: debe devolver el curso.
+4. Envía PATCH /courses/:id con `{"level":"intermediate"}`; reinicia y comprueba el cambio con GET.
+5. Envía DELETE /courses/:id y comprueba que GET devuelve 404, también tras reiniciar.
+
+### Pruebas automatizadas
+
+`npm run test:courses` ejecuta el CRUD por HTTP contra PostgreSQL, cierra y vuelve a crear
+la aplicación y su conexión entre operaciones para verificar la persistencia de creación,
+actualización y eliminación. También verifica filtros, orden, validación y errores 404.
+`npm run test:integration` incluye además Estudiantes y Matrículas.
+Cada aplicación de prueba usa un esquema temporal único que elimina al terminar;
+el usuario de PostgreSQL necesita permiso CREATE sobre la base de datos.
+Las pruebas de Matrículas preparan sus tres cursos de ejemplo únicamente en ese esquema.
+
+Referencia: [Sesión 8 · CRUD persistente con repositorios](https://epanchanaf.github.io/nestjs-course/semana-04/sesion-08).
+
+
+API con NestJS. La sesión 8 migra Cursos a PostgreSQL mediante una entidad Course y un repositorio TypeORM. Los cursos sobreviven a los reinicios y ya no se precargan ejemplos. Estudiantes y Matrículas conservan su almacenamiento en memoria.
 
 ## Ejecutar
 
@@ -8,6 +54,8 @@ Desde la carpeta `coursehub-api`:
 
 ```powershell
 npm ci
+if (-not (Test-Path .env)) { Copy-Item .env.example .env }
+# Editar .env con las credenciales locales de PostgreSQL
 npm run build
 npm run start:dev
 ```
@@ -22,7 +70,7 @@ URL local: `http://localhost:3000`. La variable `PORT` permite cambiar el puerto
 - `src/app.module.ts`: registra los tres módulos.
 - `src/main.ts`: activa `ValidationPipe` global con `whitelist` y `forbidNonWhitelisted`.
 
-Cursos y Estudiantes exportan sus servicios. Matrículas importa sus módulos para consultar las mismas listas. El controlador delega al servicio; las comprobaciones de existencia, estado activo, duplicados y cancelación están en `EnrollmentsService`. Los identificadores de matrícula son consecutivos y no se reutilizan al cancelar.
+Cursos y Estudiantes exportan sus servicios. Matrículas importa sus módulos para consultar sus servicios compartidos. El controlador delega al servicio; las comprobaciones de existencia, estado activo, duplicados y cancelación están en `EnrollmentsService`. Los identificadores de matrícula son consecutivos y no se reutilizan al cancelar.
 
 El DTO de creación exige `studentId` y `courseId` numéricos, enteros positivos seguros. Los filtros opcionales se convierten a números y validan mediante un DTO. `EnrollmentIdPipe` transforma y valida identificadores de ruta. Los campos desconocidos se rechazan con 400.
 
@@ -55,7 +103,7 @@ Ejecutar en orden con el servidor recién iniciado. Usar Body → raw → JSON y
 
 ### Preparar estudiantes y comprobar cursos
 
-`GET /courses/1` → 200:
+Primero crea el curso con `POST /courses` usando el siguiente título y nivel (sin enviar id). Usa el id devuelto en las solicitudes siguientes. Los IDs 1 y 2 de estos ejemplos son ilustrativos:
 
 ```json
 {"id":1,"title":"NestJS Fundamentals","level":"beginner"}
@@ -188,7 +236,7 @@ npm test
 npm run test:e2e
 ```
 
-`test:integration` compila y ejecuta las pruebas HTTP de Estudiantes y Matrículas con aplicaciones de prueba aisladas, sin alterar los datos del servidor usado en Postman. También se puede ejecutar `npm run test:enrollments` o `npm run test:students` por separado.
+`test:integration` compila y ejecuta las pruebas HTTP de Cursos, Estudiantes y Matrículas con aplicaciones de prueba aisladas, sin alterar los datos del servidor usado en Postman. También se puede ejecutar `npm run test:enrollments` o `npm run test:students` por separado.
 
 `test/enrollments.http.test.mjs` cubre: matrícula válida usando un curso creado por HTTP, duplicados, estudiante inactivo, estudiante y curso inexistentes, filtros individuales y combinados, rutas anidadas, cancelación, nueva matrícula después de cancelar, entradas inválidas y propiedades adicionales. La suite de Estudiantes conserva la evidencia de sus flujos previos.
 
@@ -206,3 +254,5 @@ git show --no-patch --format=fuller 91d5c26
 El commit `91d5c26` registra el merge de Cursos y Estudiantes. Los commits posteriores contienen Matrículas y sus evidencias. Para la demostración, ejecutar los casos anteriores y mostrar sus respuestas en Postman junto al historial Git.
 
 Más documentación de la práctica previa: [SEMANA-3.md](SEMANA-3.md).
+
+Validación de sesión 8 (29 de septiembre de 2026): build y lint correctos; 16 pruebas HTTP, 3 unitarias y 1 e2e aprobadas. La conexión real a PostgreSQL y la persistencia al reabrir la aplicación quedaron verificadas.

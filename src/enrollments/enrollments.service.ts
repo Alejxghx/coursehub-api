@@ -19,9 +19,9 @@ export class EnrollmentsService {
     private readonly coursesService: CoursesService,
   ) {}
 
-  create(input: CreateEnrollmentDto): Enrollment {
+  async create(input: CreateEnrollmentDto): Promise<Enrollment> {
     const student = this.studentsService.findOne(input.studentId);
-    this.requireCourse(input.courseId);
+    await this.requireCourse(input.courseId);
     if (!student.isActive) {
       throw new ConflictException(
         'No se puede matricular a un estudiante inactivo',
@@ -60,8 +60,8 @@ export class EnrollmentsService {
     return this.findAll(studentId);
   }
 
-  findByCourse(courseId: number): Enrollment[] {
-    this.requireCourse(courseId);
+  async findByCourse(courseId: number): Promise<Enrollment[]> {
+    await this.requireCourse(courseId);
     return this.findAll(undefined, courseId);
   }
 
@@ -73,8 +73,11 @@ export class EnrollmentsService {
     this.enrollments.splice(index, 1);
   }
 
-  private requireCourse(courseId: number): void {
-    if (!this.coursesService.findOne(courseId)) {
+  private async requireCourse(courseId: number): Promise<void> {
+    try {
+      await this.coursesService.findOne(courseId);
+    } catch (error) {
+      if (!(error instanceof NotFoundException)) throw error;
       throw new NotFoundException(`No existe el curso ${courseId}`);
     }
   }

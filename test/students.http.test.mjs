@@ -1,10 +1,10 @@
 import 'reflect-metadata';
 import { after, before, beforeEach, describe, it } from 'node:test';
 import assert from 'node:assert/strict';
-import { NestFactory } from '@nestjs/core';
+import { createTestApp } from './database.mjs';
 import { ValidationPipe } from '@nestjs/common';
 import request from 'supertest';
-import { AppModule } from '../dist/app.module.js';
+
 import { StudentsService } from '../dist/students/students.service.js';
 
 const student = {
@@ -20,7 +20,7 @@ describe('API de estudiantes (HTTP con aplicación compilada)', () => {
   let app;
   let api;
   before(async () => {
-    app = await NestFactory.create(AppModule, { logger: false });
+    app = await createTestApp();
     app.useGlobalPipes(
       new ValidationPipe({ whitelist: true, forbidNonWhitelisted: true }),
     );

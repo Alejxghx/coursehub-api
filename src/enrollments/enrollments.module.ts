@@ -10,3 +10,6 @@ import { CoursesModule } from '../courses/courses.module.js';
   providers: [EnrollmentsService],
 })
 export class EnrollmentsModule {}
+
+
+// Necesitamos consultar Estudiantes y Cursos para comprobar que ambos existan antes de matricular
