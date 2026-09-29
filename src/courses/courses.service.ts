@@ -10,40 +10,32 @@ export class CoursesService {
   constructor(
     @InjectRepository(Course)
     private readonly coursesRepository: Repository<Course>,
-  ) {}
+  ) {} // 1
 
-  findAll(level?: string) {
-    return this.coursesRepository.find({
-      where: level ? { level } : {},
-      order: { id: 'ASC' },
-    });
+  findAll(level?: string) { // 2
+    return this.coursesRepository.find({ where: level ? { level } : {} }); // 3
   }
 
   async findOne(id: number): Promise<Course> {
-    if (!Number.isInteger(id) || id < 1 || id > 2147483647) {
-      throw new NotFoundException(`Course ${id} not found`);
-    }
-    const course = await this.coursesRepository.findOneBy({ id });
-    if (!course) throw new NotFoundException(`Course ${id} not found`);
+    const course = await this.coursesRepository.findOneBy({ id }); // 4
+    if (!course) throw new NotFoundException(`Course ${id} not found`); // 5
     return course;
   }
 
-  create(dto: CreateCourseDto) {
+  create(dto: CreateCourseDto) { // 6
     const course = this.coursesRepository.create(dto);
     return this.coursesRepository.save(course);
   }
 
   async update(id: number, dto: UpdateCourseDto) {
-    const course = await this.findOne(id);
-    if (dto.title !== undefined) course.title = dto.title;
-    if (dto.level !== undefined) course.level = dto.level;
-    return this.coursesRepository.save(course);
+    const course = await this.findOne(id); // 7
+    Object.assign(course, dto);
+    return this.coursesRepository.save(course); // 8
   }
 
   async remove(id: number) {
-    const course = await this.findOne(id);
-    const removed = { ...course };
-    await this.coursesRepository.remove(course);
-    return removed;
+    const course = await this.findOne(id); // 9
+    await this.coursesRepository.remove(course); // 10
+    return course;
   }
 }
