@@ -3,78 +3,101 @@ import {
   Injectable,
   NotFoundException,
 } from '@nestjs/common';
-import type { Student } from './student.js';
+import { InjectRepository } from '@nestjs/typeorm';
+import { Repository } from 'typeorm';
+import type { FindOptionsWhere } from 'typeorm';
+import { Student } from './entities/student.entity.js';
 import type { CreateStudentDto } from './dto/create-student.dto.js';
 import type { UpdateStudentDto } from './dto/update-student.dto.js';
 import type { FilterStudentsDto } from './dto/filter-students.dto.js';
+import { postgresErrorCode } from '../common/postgres-error.js';
 
 @Injectable()
 export class StudentsService {
-  private students: Student[] = [];
-  private nextId = 1;
+  constructor(
+    @InjectRepository(Student)
+    private readonly studentsRepository: Repository<Student>,
+  ) {}
 
-  create(input: CreateStudentDto): Student {
-    this.checkEmail(input.email);
-    const student: Student = { ...input, id: this.nextId++ };
-    this.students.push(student);
+  async create(input: CreateStudentDto): Promise<Student> {
+    await this.checkEmail(input.email);
+    return this.saveStudent(this.studentsRepository.create(input));
+  }
+
+  findAll(filters: FilterStudentsDto): Promise<Student[]> {
+    const where: FindOptionsWhere<Student> = {};
+    if (filters.career !== undefined) where.career = filters.career;
+    if (filters.semester !== undefined) where.semester = filters.semester;
+    if (filters.isActive !== undefined) where.isActive = filters.isActive;
+    return this.studentsRepository.find({ where, order: { id: 'ASC' } });
+  }
+
+  async findOne(id: number): Promise<Student> {
+    const student = await this.studentsRepository.findOneBy({ id });
+    if (!student) throw new NotFoundException('No existe el estudiante ' + id);
     return student;
   }
 
-  findAll(filters: FilterStudentsDto): Student[] {
-    return this.students.filter(
-      (student) =>
-        (filters.career === undefined || student.career === filters.career) &&
-        (filters.semester === undefined ||
-          student.semester === filters.semester) &&
-        (filters.isActive === undefined ||
-          student.isActive === filters.isActive),
-    );
-  }
-
-  findOne(id: number): Student {
-    const student = this.students.find((item) => item.id === id);
-    if (!student) throw new NotFoundException(`No existe el estudiante ${id}`);
-    return student;
-  }
-
-  update(id: number, input: UpdateStudentDto): Student {
-    const student = this.findOne(id);
-    if (input.email !== undefined) this.checkEmail(input.email, id);
-    // Copiar únicamente campos permitidos y presentes: el id nunca se modifica.
+  async update(id: number, input: UpdateStudentDto): Promise<Student> {
+    const student = await this.findOne(id);
+    if (input.email !== undefined) {
+      await this.checkEmail(input.email, id);
+      student.email = input.email;
+    }
+    // Los campos omitidos no deben sobrescribir los datos guardados.
     if (input.name !== undefined) student.name = input.name;
-    if (input.email !== undefined) student.email = input.email;
     if (input.age !== undefined) student.age = input.age;
     if (input.career !== undefined) student.career = input.career;
     if (input.semester !== undefined) student.semester = input.semester;
     if (input.isActive !== undefined) student.isActive = input.isActive;
-    return student;
+    return this.saveStudent(student);
   }
 
-  updateStatus(id: number, isActive: boolean): Student {
-    const student = this.findOne(id);
+  async updateStatus(id: number, isActive: boolean): Promise<Student> {
+    const student = await this.findOne(id);
     student.isActive = isActive;
-    return student;
+    return this.saveStudent(student);
   }
 
-  remove(id: number): void {
-    const student = this.findOne(id);
+  async remove(id: number): Promise<void> {
+    const student = await this.findOne(id);
     if (!student.isActive) {
       throw new ConflictException(
         'No se puede eliminar un estudiante inactivo',
       );
     }
-    this.students = this.students.filter((item) => item.id !== id);
+    try {
+      await this.studentsRepository.remove(student);
+    } catch (error) {
+      if (postgresErrorCode(error) === '23503') {
+        throw new ConflictException(
+          'Cancela las matrículas del estudiante antes de eliminarlo',
+        );
+      }
+      throw error;
+    }
   }
 
-  private checkEmail(email: string, excludedId?: number): void {
-    if (
-      this.students.some(
-        (student) => student.email === email && student.id !== excludedId,
-      )
-    ) {
+  private async checkEmail(email: string, excludedId?: number): Promise<void> {
+    const existing = await this.studentsRepository.findOneBy({ email });
+    if (existing && existing.id !== excludedId) {
       throw new ConflictException(
         'El correo electrónico ya pertenece a otro estudiante',
       );
+    }
+  }
+
+  private async saveStudent(student: Student): Promise<Student> {
+    try {
+      return await this.studentsRepository.save(student);
+    } catch (error) {
+      // La restricción UNIQUE también protege solicitudes simultáneas.
+      if (postgresErrorCode(error) === '23505') {
+        throw new ConflictException(
+          'El correo electrónico ya pertenece a otro estudiante',
+        );
+      }
+      throw error;
     }
   }
 }

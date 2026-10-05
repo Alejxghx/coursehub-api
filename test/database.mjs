@@ -5,6 +5,8 @@ import { Test } from '@nestjs/testing';
 import { getDataSourceToken } from '@nestjs/typeorm';
 import { DataSource } from 'typeorm';
 import { AppModule } from '../dist/app.module.js';
+import { Student } from '../dist/students/entities/student.entity.js';
+import { Enrollment } from '../dist/enrollments/entities/enrollment.entity.js';
 import { Course } from '../dist/courses/entities/course.entity.js';
 
 export async function createTestDatabase() {
@@ -26,7 +28,7 @@ export async function createTestDatabase() {
       const source = await new DataSource({
         ...options,
         schema,
-        entities: [Course],
+        entities: [Course, Student, Enrollment],
         synchronize: true,
       }).initialize();
       try {

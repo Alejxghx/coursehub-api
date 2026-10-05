@@ -85,7 +85,7 @@ it('CRUD de cursos conserva datos después de reiniciar la aplicación', async (
       .send({ title: 'No recrear' })
       .expect(404);
     await api.delete('/courses/' + id).expect(404);
-    await api.get('/courses/no-numero').expect(404);
+    await api.get('/courses/no-numero').expect(400);
     const remaining = await api.get('/courses').expect(200);
     assert.equal(remaining.body.length, 2);
   } finally {

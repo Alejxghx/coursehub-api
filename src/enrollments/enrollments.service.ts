@@ -1,62 +1,78 @@
 import {
+  BadRequestException,
   ConflictException,
   Injectable,
   NotFoundException,
 } from '@nestjs/common';
-import { StudentsService } from '../students/students.service.js';
-import { CoursesService } from '../courses/courses.service.js';
+import { InjectRepository } from '@nestjs/typeorm';
+import { Repository } from 'typeorm';
+import type { FindOptionsWhere } from 'typeorm';
+import { Enrollment } from './entities/enrollment.entity.js';
+import { Student } from '../students/entities/student.entity.js';
+import { Course } from '../courses/entities/course.entity.js';
 import type { CreateEnrollmentDto } from './dto/create-enrollment.dto.js';
-
-type Enrollment = { id: number; studentId: number; courseId: number };
+import { postgresErrorCode } from '../common/postgres-error.js';
 
 @Injectable()
 export class EnrollmentsService {
-  private readonly enrollments: Enrollment[] = [];
-  private nextId = 1;
-
   constructor(
-    private readonly studentsService: StudentsService,
-    private readonly coursesService: CoursesService,
+    @InjectRepository(Enrollment)
+    private readonly enrollmentsRepository: Repository<Enrollment>,
+    @InjectRepository(Student)
+    private readonly studentsRepository: Repository<Student>,
+    @InjectRepository(Course)
+    private readonly coursesRepository: Repository<Course>,
   ) {}
 
   async create(input: CreateEnrollmentDto): Promise<Enrollment> {
-    const student = this.studentsService.findOne(input.studentId);
-    await this.requireCourse(input.courseId);
+    const student = await this.requireStudent(input.studentId);
+    const course = await this.requireCourse(input.courseId);
     if (!student.isActive) {
-      throw new ConflictException(
+      throw new BadRequestException(
         'No se puede matricular a un estudiante inactivo',
       );
     }
-    if (
-      this.enrollments.some(
-        (item) =>
-          item.studentId === input.studentId &&
-          item.courseId === input.courseId,
-      )
-    ) {
+    const duplicate = await this.enrollmentsRepository.findOne({
+      where: { student: { id: student.id }, course: { id: course.id } },
+    });
+    if (duplicate) {
       throw new ConflictException(
         'El estudiante ya está matriculado en este curso',
       );
     }
-    const enrollment = {
-      id: this.nextId++,
-      studentId: input.studentId,
-      courseId: input.courseId,
-    };
-    this.enrollments.push(enrollment);
-    return enrollment;
+    try {
+      return await this.enrollmentsRepository.save(
+        this.enrollmentsRepository.create({ student, course }),
+      );
+    } catch (error) {
+      const code = postgresErrorCode(error);
+      if (code === '23505') {
+        throw new ConflictException(
+          'El estudiante ya está matriculado en este curso',
+        );
+      }
+      if (code === '23503') {
+        throw new ConflictException(
+          'El estudiante o curso ya no está disponible',
+        );
+      }
+      throw error;
+    }
   }
 
-  findAll(studentId?: number, courseId?: number): Enrollment[] {
-    return this.enrollments.filter(
-      (item) =>
-        (studentId === undefined || item.studentId === studentId) &&
-        (courseId === undefined || item.courseId === courseId),
-    );
+  findAll(studentId?: number, courseId?: number): Promise<Enrollment[]> {
+    const where: FindOptionsWhere<Enrollment> = {};
+    if (studentId !== undefined) where.student = { id: studentId };
+    if (courseId !== undefined) where.course = { id: courseId };
+    return this.enrollmentsRepository.find({
+      where,
+      relations: { student: true, course: true },
+      order: { id: 'ASC' },
+    });
   }
 
-  findByStudent(studentId: number): Enrollment[] {
-    this.studentsService.findOne(studentId);
+  async findByStudent(studentId: number): Promise<Enrollment[]> {
+    await this.requireStudent(studentId);
     return this.findAll(studentId);
   }
 
@@ -65,20 +81,22 @@ export class EnrollmentsService {
     return this.findAll(undefined, courseId);
   }
 
-  remove(id: number): void {
-    const index = this.enrollments.findIndex((item) => item.id === id);
-    if (index === -1) {
-      throw new NotFoundException(`No existe la matrícula ${id}`);
-    }
-    this.enrollments.splice(index, 1);
+  async remove(id: number): Promise<void> {
+    const enrollment = await this.enrollmentsRepository.findOneBy({ id });
+    if (!enrollment)
+      throw new NotFoundException('No existe la matrícula ' + id);
+    await this.enrollmentsRepository.remove(enrollment);
   }
 
-  private async requireCourse(courseId: number): Promise<void> {
-    try {
-      await this.coursesService.findOne(courseId);
-    } catch (error) {
-      if (!(error instanceof NotFoundException)) throw error;
-      throw new NotFoundException(`No existe el curso ${courseId}`);
-    }
+  private async requireStudent(id: number): Promise<Student> {
+    const student = await this.studentsRepository.findOneBy({ id });
+    if (!student) throw new NotFoundException('No existe el estudiante ' + id);
+    return student;
+  }
+
+  private async requireCourse(id: number): Promise<Course> {
+    const course = await this.coursesRepository.findOneBy({ id });
+    if (!course) throw new NotFoundException('No existe el curso ' + id);
+    return course;
   }
 }

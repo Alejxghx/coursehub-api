@@ -1,9 +1,2 @@
-export interface Student {
-  id: number;
-  name: string;
-  email: string;
-  age: number;
-  career: string;
-  semester: number;
-  isActive: boolean;
-}
+// Compatibilidad con imports anteriores; la entidad es la fuente del modelo.
+export type { Student } from './entities/student.entity.js';

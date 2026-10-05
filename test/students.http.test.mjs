@@ -1,11 +1,9 @@
 import 'reflect-metadata';
-import { after, before, beforeEach, describe, it } from 'node:test';
+import { afterEach, beforeEach, describe, it } from 'node:test';
 import assert from 'node:assert/strict';
 import { createTestApp } from './database.mjs';
 import { ValidationPipe } from '@nestjs/common';
 import request from 'supertest';
-
-import { StudentsService } from '../dist/students/students.service.js';
 
 const student = {
   name: 'Ana Perez',
@@ -19,7 +17,7 @@ const student = {
 describe('API de estudiantes (HTTP con aplicación compilada)', () => {
   let app;
   let api;
-  before(async () => {
+  beforeEach(async () => {
     app = await createTestApp();
     app.useGlobalPipes(
       new ValidationPipe({ whitelist: true, forbidNonWhitelisted: true }),
@@ -27,13 +25,7 @@ describe('API de estudiantes (HTTP con aplicación compilada)', () => {
     await app.init();
     api = request(app.getHttpServer());
   });
-  beforeEach(() => {
-    // Reiniciar únicamente el almacenamiento de esta aplicación de prueba.
-    const service = app.get(StudentsService);
-    service.students = [];
-    service.nextId = 1;
-  });
-  after(async () => {
+  afterEach(async () => {
     await app?.close();
   });
 

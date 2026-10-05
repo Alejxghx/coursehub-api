@@ -1,4 +1,14 @@
-import { Body, Controller, Delete, Get, Param, Patch, Post, Query,} from '@nestjs/common';
+import {
+  Body,
+  Controller,
+  Delete,
+  Get,
+  Param,
+  ParseIntPipe,
+  Patch,
+  Post,
+  Query,
+} from '@nestjs/common';
 import { CoursesService } from './courses.service.js';
 import { CreateCourseDto } from './dto/create-course.dto.js';
 import { UpdateCourseDto } from './dto/update-course.dto.js';
@@ -13,8 +23,8 @@ export class CoursesController {
   }
 
   @Get(':id')
-  findOne(@Param('id') id: string) {
-    return this.coursesService.findOne(Number(id));
+  findOne(@Param('id', ParseIntPipe) id: number) {
+    return this.coursesService.findOne(id);
   }
 
   @Post()
@@ -24,14 +34,14 @@ export class CoursesController {
 
   @Patch(':id')
   update(
-    @Param('id') id: string,
+    @Param('id', ParseIntPipe) id: number,
     @Body() updateCourseDto: UpdateCourseDto,
   ) {
-    return this.coursesService.update(Number(id), updateCourseDto);
+    return this.coursesService.update(id, updateCourseDto);
   }
 
   @Delete(':id')
-  remove(@Param('id') id: string) {
-    return this.coursesService.remove(Number(id));
+  remove(@Param('id', ParseIntPipe) id: number) {
+    return this.coursesService.remove(id);
   }
 }

@@ -1,0 +1,344 @@
+{
+  "info": {
+    "name": "CourseHub — Entrega sesiones 9 y 10",
+    "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json",
+    "description": "Ejecutar manualmente en orden. Después de crear la matrícula, detener y volver a iniciar la API antes de consultar. Los IDs se guardan automáticamente. Cada ejecución prepara correos únicos."
+  },
+  "variable": [
+    {
+      "key": "baseUrl",
+      "value": "http://localhost:3000"
+    }
+  ],
+  "item": [
+    {
+      "name": "00 — Crear curso",
+      "request": {
+        "method": "POST",
+        "header": [
+          {
+            "key": "Content-Type",
+            "value": "application/json"
+          }
+        ],
+        "url": "{{baseUrl}}/courses",
+        "body": {
+          "mode": "raw",
+          "raw": "{\n  \"title\": \"Entrega NestJS\",\n  \"level\": \"beginner\"\n}",
+          "options": {
+            "raw": {
+              "language": "json"
+            }
+          }
+        }
+      },
+      "event": [
+        {
+          "listen": "prerequest",
+          "script": {
+            "type": "text/javascript",
+            "exec": [
+              "pm.collectionVariables.set('runId', Date.now().toString());"
+            ]
+          }
+        },
+        {
+          "listen": "test",
+          "script": {
+            "type": "text/javascript",
+            "exec": [
+              "pm.test('HTTP 201', () => pm.response.to.have.status(201));",
+              "pm.collectionVariables.set('courseId', pm.response.json().id);"
+            ]
+          }
+        }
+      ]
+    },
+    {
+      "name": "01 — Crear estudiante activo",
+      "request": {
+        "method": "POST",
+        "header": [
+          {
+            "key": "Content-Type",
+            "value": "application/json"
+          }
+        ],
+        "url": "{{baseUrl}}/students",
+        "body": {
+          "mode": "raw",
+          "raw": "{\n  \"name\": \"Robert\",\n  \"email\": \"robert.{{runId}}@example.com\",\n  \"age\": 20,\n  \"career\": \"Software\",\n  \"semester\": 6,\n  \"isActive\": true\n}",
+          "options": {
+            "raw": {
+              "language": "json"
+            }
+          }
+        }
+      },
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "type": "text/javascript",
+            "exec": [
+              "pm.test('HTTP 201', () => pm.response.to.have.status(201));",
+              "pm.collectionVariables.set('studentId', pm.response.json().id);"
+            ]
+          }
+        }
+      ]
+    },
+    {
+      "name": "02 — Crear matrícula; después REINICIAR la API",
+      "request": {
+        "method": "POST",
+        "header": [
+          {
+            "key": "Content-Type",
+            "value": "application/json"
+          }
+        ],
+        "url": "{{baseUrl}}/enrollments",
+        "body": {
+          "mode": "raw",
+          "raw": "{\n  \"studentId\": {{studentId}},\n  \"courseId\": {{courseId}}\n}",
+          "options": {
+            "raw": {
+              "language": "json"
+            }
+          }
+        }
+      },
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "type": "text/javascript",
+            "exec": [
+              "pm.test('HTTP 201', () => pm.response.to.have.status(201));",
+              "pm.collectionVariables.set('enrollmentId', pm.response.json().id);"
+            ]
+          }
+        }
+      ]
+    },
+    {
+      "name": "03 — Después del reinicio: consultar la MISMA matrícula",
+      "request": {
+        "method": "GET",
+        "header": [],
+        "url": "{{baseUrl}}/enrollments?studentId={{studentId}}&courseId={{courseId}}"
+      },
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "type": "text/javascript",
+            "exec": [
+              "pm.test('HTTP 200', () => pm.response.to.have.status(200));",
+              "pm.test('Conserva el ID y las relaciones', () => { const rows = pm.response.json(); pm.expect(rows).to.have.lengthOf(1); pm.expect(rows[0].id).to.eql(Number(pm.collectionVariables.get('enrollmentId'))); pm.expect(rows[0].student.id).to.eql(Number(pm.collectionVariables.get('studentId'))); pm.expect(rows[0].course.id).to.eql(Number(pm.collectionVariables.get('courseId'))); });"
+            ]
+          }
+        }
+      ]
+    },
+    {
+      "name": "04 — Duplicado: 409",
+      "request": {
+        "method": "POST",
+        "header": [
+          {
+            "key": "Content-Type",
+            "value": "application/json"
+          }
+        ],
+        "url": "{{baseUrl}}/enrollments",
+        "body": {
+          "mode": "raw",
+          "raw": "{\n  \"studentId\": {{studentId}},\n  \"courseId\": {{courseId}}\n}",
+          "options": {
+            "raw": {
+              "language": "json"
+            }
+          }
+        }
+      },
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "type": "text/javascript",
+            "exec": [
+              "pm.test('HTTP 409', () => pm.response.to.have.status(409));"
+            ]
+          }
+        }
+      ]
+    },
+    {
+      "name": "05 — Crear estudiante inactivo",
+      "request": {
+        "method": "POST",
+        "header": [
+          {
+            "key": "Content-Type",
+            "value": "application/json"
+          }
+        ],
+        "url": "{{baseUrl}}/students",
+        "body": {
+          "mode": "raw",
+          "raw": "{\n  \"name\": \"Robert\",\n  \"email\": \"inactivo.{{runId}}@example.com\",\n  \"age\": 20,\n  \"career\": \"Software\",\n  \"semester\": 6,\n  \"isActive\": false\n}",
+          "options": {
+            "raw": {
+              "language": "json"
+            }
+          }
+        }
+      },
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "type": "text/javascript",
+            "exec": [
+              "pm.test('HTTP 201', () => pm.response.to.have.status(201));",
+              "pm.collectionVariables.set('inactiveId', pm.response.json().id);"
+            ]
+          }
+        }
+      ]
+    },
+    {
+      "name": "06 — Matricular inactivo: 400",
+      "request": {
+        "method": "POST",
+        "header": [
+          {
+            "key": "Content-Type",
+            "value": "application/json"
+          }
+        ],
+        "url": "{{baseUrl}}/enrollments",
+        "body": {
+          "mode": "raw",
+          "raw": "{\n  \"studentId\": {{inactiveId}},\n  \"courseId\": {{courseId}}\n}",
+          "options": {
+            "raw": {
+              "language": "json"
+            }
+          }
+        }
+      },
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "type": "text/javascript",
+            "exec": [
+              "pm.test('HTTP 400', () => pm.response.to.have.status(400));"
+            ]
+          }
+        }
+      ]
+    },
+    {
+      "name": "07 — Filtrar por estudiante",
+      "request": {
+        "method": "GET",
+        "header": [],
+        "url": "{{baseUrl}}/enrollments?studentId={{studentId}}"
+      },
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "type": "text/javascript",
+            "exec": [
+              "pm.test('HTTP 200', () => pm.response.to.have.status(200));",
+              "pm.test('Incluye la matrícula', () => pm.expect(pm.response.json().map(x => x.id)).to.include(Number(pm.collectionVariables.get('enrollmentId'))));"
+            ]
+          }
+        }
+      ]
+    },
+    {
+      "name": "07 — Filtrar por curso",
+      "request": {
+        "method": "GET",
+        "header": [],
+        "url": "{{baseUrl}}/enrollments?courseId={{courseId}}"
+      },
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "type": "text/javascript",
+            "exec": [
+              "pm.test('HTTP 200', () => pm.response.to.have.status(200));",
+              "pm.test('Incluye la matrícula', () => pm.expect(pm.response.json().map(x => x.id)).to.include(Number(pm.collectionVariables.get('enrollmentId'))));"
+            ]
+          }
+        }
+      ]
+    },
+    {
+      "name": "08 — Cancelar matrícula",
+      "request": {
+        "method": "DELETE",
+        "header": [],
+        "url": "{{baseUrl}}/enrollments/{{enrollmentId}}"
+      },
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "type": "text/javascript",
+            "exec": [
+              "pm.test('HTTP 204', () => pm.response.to.have.status(204));"
+            ]
+          }
+        }
+      ]
+    },
+    {
+      "name": "09 — Ya no existe en el filtro",
+      "request": {
+        "method": "GET",
+        "header": [],
+        "url": "{{baseUrl}}/enrollments?studentId={{studentId}}&courseId={{courseId}}"
+      },
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "type": "text/javascript",
+            "exec": [
+              "pm.test('HTTP 200', () => pm.response.to.have.status(200));",
+              "pm.test('Sin matrícula', () => pm.expect(pm.response.json()).to.eql([]));"
+            ]
+          }
+        }
+      ]
+    },
+    {
+      "name": "10 — Repetir cancelación: 404",
+      "request": {
+        "method": "DELETE",
+        "header": [],
+        "url": "{{baseUrl}}/enrollments/{{enrollmentId}}"
+      },
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "type": "text/javascript",
+            "exec": [
+              "pm.test('HTTP 404', () => pm.response.to.have.status(404));"
+            ]
+          }
+        }
+      ]
+    }
+  ]
+}

@@ -59,6 +59,6 @@ export class StudentsController {
   @Delete(':id')
   @HttpCode(204)
   remove(@Param('id', StudentIdPipe) id: number) {
-    this.studentsService.remove(id);
+    return this.studentsService.remove(id);
   }
 }

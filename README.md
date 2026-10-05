@@ -1,258 +1,149 @@
-# CourseHub API — Cursos, Estudiantes y Matrículas
+# CourseHub API — Sesiones 9 y 10
 
-## Sesión 8: PostgreSQL y CRUD persistente
-
-Requisitos: Node.js compatible con NestJS 12, npm y un servidor PostgreSQL disponible.
-Crea la base de datos `coursehub` en PostgreSQL (`CREATE DATABASE coursehub;`).
-Copia `.env.example` a `.env` solamente si todavía no existe y configura:
-
-| Variable | Ejemplo |
-|---|---|
-| DATABASE_HOST | localhost |
-| DATABASE_PORT | 5432 |
-| DATABASE_NAME | coursehub |
-| DATABASE_USER | postgres |
-| DATABASE_PASSWORD | tu contraseña local |
-
-`.env` está excluido de Git. `.env.example` contiene únicamente valores de ejemplo.
-TypeORM registra Course mediante `forFeature` y `autoLoadEntities`; al iniciar,
-`synchronize: true` crea la tabla courses. Esta configuración es para desarrollo;
-en producción se deben utilizar migraciones.
-
-El controlador y los DTOs mantienen el contrato HTTP existente.
-CoursesService usa find, findOneBy, create/save y remove. PostgreSQL genera los IDs.
-GET, PATCH y DELETE de un curso inexistente devuelven 404.
-PATCH conserva los campos omitidos y DELETE devuelve el curso eliminado, incluido su id.
-El listado se ordena por id ascendente: SQL no garantiza un orden implícito.
-
-### Comprobar persistencia manualmente
-
-1. Ejecuta `npm run start:dev`.
-2. Envía POST /courses con `{"title":"Curso persistente de prueba","level":"beginner"}` y anota el id.
-3. Detén la API con Ctrl+C, vuelve a iniciarla y consulta GET /courses/:id: debe devolver el curso.
-4. Envía PATCH /courses/:id con `{"level":"intermediate"}`; reinicia y comprueba el cambio con GET.
-5. Envía DELETE /courses/:id y comprueba que GET devuelve 404, también tras reiniciar.
-
-### Pruebas automatizadas
-
-`npm run test:courses` ejecuta el CRUD por HTTP contra PostgreSQL, cierra y vuelve a crear
-la aplicación y su conexión entre operaciones para verificar la persistencia de creación,
-actualización y eliminación. También verifica filtros, orden, validación y errores 404.
-`npm run test:integration` incluye además Estudiantes y Matrículas.
-Cada aplicación de prueba usa un esquema temporal único que elimina al terminar;
-el usuario de PostgreSQL necesita permiso CREATE sobre la base de datos.
-Las pruebas de Matrículas preparan sus tres cursos de ejemplo únicamente en ese esquema.
-
-Referencia: [Sesión 8 · CRUD persistente con repositorios](https://epanchanaf.github.io/nestjs-course/semana-04/sesion-08).
-
-
-API con NestJS. La sesión 8 migra Cursos a PostgreSQL mediante una entidad Course y un repositorio TypeORM. Los cursos sobreviven a los reinicios y ya no se precargan ejemplos. Estudiantes y Matrículas conservan su almacenamiento en memoria.
+Cursos, estudiantes y matrículas persistentes en PostgreSQL con NestJS y TypeORM.
 
 ## Ejecutar
 
-Desde la carpeta `coursehub-api`:
+Desde `aplicaciones-servidor-web/coursehub-api`:
 
 ```powershell
 npm ci
+# Solo si todavía no existe:
 if (-not (Test-Path .env)) { Copy-Item .env.example .env }
-# Editar .env con las credenciales locales de PostgreSQL
+# Configura las credenciales PostgreSQL en .env.
 npm run build
 npm run start:dev
 ```
 
-URL local: `http://localhost:3000`. La variable `PORT` permite cambiar el puerto.
+La base indicada en `DATABASE_NAME` debe existir. Variables: `DATABASE_HOST`,
+`DATABASE_PORT`, `DATABASE_USER`, `DATABASE_PASSWORD`, `DATABASE_NAME` y opcionalmente
+`PORT` (3000 por defecto). Nunca subas `.env` con credenciales.
 
-## Estructura y responsabilidades
+`autoLoadEntities: true` incorpora las entidades registradas mediante `forFeature`.
+`synchronize: true` crea/actualiza las tablas para esta práctica de desarrollo;
+en producción se utilizan migraciones. No se precargan datos de ejemplo en la API.
 
-- `src/courses`: módulo, controlador, servicio y DTOs de Cursos.
-- `src/students`: módulo, controlador, servicio, DTOs y Pipe de Estudiantes.
-- `src/enrollments`: módulo, controlador, servicio, DTOs y Pipe de Matrículas.
-- `src/app.module.ts`: registra los tres módulos.
-- `src/main.ts`: activa `ValidationPipe` global con `whitelist` y `forbidNonWhitelisted`.
+## Sesión 9: estudiantes persistentes
 
-Cursos y Estudiantes exportan sus servicios. Matrículas importa sus módulos para consultar sus servicios compartidos. El controlador delega al servicio; las comprobaciones de existencia, estado activo, duplicados y cancelación están en `EnrollmentsService`. Los identificadores de matrícula son consecutivos y no se reutilizan al cancelar.
+- `src/students/entities/student.entity.ts`: tabla students con correo único.
+- `StudentsModule`: habilita Repository<Student>.
+- `StudentsService`: utiliza find, findOneBy, create/save y remove; ya no tiene un arreglo ni nextId.
+- Se conservan DTOs, normalización de correo, semestre entre 1 y 10, filtros combinables y cambios parciales.
+- Un estudiante inexistente devuelve 404. Correo repetido y eliminación de un inactivo devuelven 409.
+- La comprobación previa de correo facilita el mensaje. La restricción UNIQUE protege incluso solicitudes simultáneas; el error PostgreSQL 23505 también se convierte a 409.
+- isActive tiene default true en la base. El DTO de creación conserva el contrato previo: enviar isActive explícitamente.
 
-El DTO de creación exige `studentId` y `courseId` numéricos, enteros positivos seguros. Los filtros opcionales se convierten a números y validan mediante un DTO. `EnrollmentIdPipe` transforma y valida identificadores de ruta. Los campos desconocidos se rechazan con 400.
+## Sesión 10: matrículas como relaciones
+
+```text
+Student 1 ---- * Enrollment * ---- 1 Course
+```
+
+- Enrollment tiene dos relaciones ManyToOne obligatorias y claves foráneas student_id y course_id.
+- Student y Course tienen la relación inversa OneToMany.
+- La restricción única compuesta impide repetir estudiante + curso, también bajo concurrencia.
+- Entrada: `{ "studentId": 3, "courseId": 5 }`.
+- Salida: `{ "id": 7, "student": { ... }, "course": { ... } }`.
+- Las consultas cargan ambas relaciones explícitamente y ordenan por id ascendente.
+- Estudiante o curso inexistente: 404; estudiante inactivo: 400; matrícula duplicada: 409.
+- RESTRICT impide eliminar un estudiante o curso con matrículas: la API devuelve 409.
+- Cancelar elimina únicamente la matrícula; los recursos relacionados se conservan.
+- PostgreSQL genera los identificadores. No se debe asumir que son consecutivos ni que empiezan en 1: una operación fallida puede consumir un valor de secuencia.
+
+El controlador valida la entrada y delega al servicio. Los repositorios realizan el acceso a datos.
+`Relation<T>` evita evaluar prematuramente los tipos de entidades que se importan mutuamente en ESM.
 
 ## Endpoints
 
-| Método | Ruta | Función / respuesta exitosa |
+| Método | Ruta | Respuesta |
 |---|---|---|
-| GET | `/courses?level=beginner` | Lista cursos, filtro opcional por nivel; 200 |
-| GET | `/courses/:id` | Consulta un curso; 200 |
-| POST | `/courses` | Crea un curso; 201 |
-| PATCH | `/courses/:id` | Modifica un curso; 200 |
-| DELETE | `/courses/:id` | Elimina un curso; 200 |
-| GET | `/students` | Lista; filtros combinables `career`, `semester`, `isActive`; 200 |
-| GET | `/students/:id` | Consulta un estudiante; 200 |
-| POST | `/students` | Crea un estudiante; 201 |
-| PATCH | `/students/:id` | Modifica un estudiante; 200 |
-| PATCH | `/students/:id/status` | Modifica `isActive`; 200 |
-| DELETE | `/students/:id` | Elimina un estudiante activo; 204 |
-| POST | `/enrollments` | Registra una matrícula; 201 |
-| GET | `/enrollments` | Lista; filtros combinables `studentId` y `courseId`; 200 |
-| GET | `/students/:studentId/enrollments` | Matrículas del estudiante; 200 |
-| GET | `/courses/:courseId/enrollments` | Matrículas del curso; 200 |
-| DELETE | `/enrollments/:id` | Cancela una matrícula; 204 sin body |
+| POST | /courses | 201 |
+| GET | /courses?level=beginner | 200 |
+| GET / PATCH | /courses/:id | 200 |
+| DELETE | /courses/:id | 200, curso eliminado |
+| POST | /students | 201 |
+| GET | /students?career=Software&semester=6&isActive=true | 200 |
+| GET / PATCH | /students/:id | 200 |
+| PATCH | /students/:id/status | 200 |
+| DELETE | /students/:id | 204 |
+| POST | /enrollments | 201 |
+| GET | /enrollments?studentId=3&courseId=5 | 200 |
+| GET | /students/:studentId/enrollments | 200 |
+| GET | /courses/:courseId/enrollments | 200 |
+| DELETE | /enrollments/:id | 204 |
 
-Una consulta anidada devuelve 404 si el estudiante o curso no existe, y `[]` si existe pero no tiene matrículas. Los filtros de `/enrollments` devuelven `[]` cuando no hay coincidencias. Ambos filtros se aplican con AND.
+Los filtros son opcionales y combinables con AND. Las rutas anidadas validan que
+exista el recurso padre. Los listados sin coincidencias devuelven `[]`.
+No existe GET /enrollments/:id: para encontrar la matrícula utiliza sus filtros.
 
-## Demostración en Postman
+Cursos conserva únicamente los niveles beginner, intermediate y advanced en los DTOs.
+PATCH conserva los campos omitidos. Un id de curso no numérico devuelve 400.
 
-Ejecutar en orden con el servidor recién iniciado. Usar Body → raw → JSON y `Content-Type: application/json` para POST/PATCH. Si ya hay datos, adaptar los IDs a las respuestas reales.
+## Evidencias para entregar en Postman
 
-### Preparar estudiantes y comprobar cursos
+Importa [la colección de sesiones 9 y 10](postman/sesiones-9-10.postman_collection.json).
+Usa baseUrl = http://localhost:3000. Ejecútala manualmente en orden; no ejecutes toda
+la colección de una vez, porque debes detener e iniciar la API entre los pasos 02 y 03.
+La colección prepara correos distintos por ejecución y guarda los IDs de las respuestas.
+Los cuerpos JSON de matrículas usan variables numéricas sin comillas.
 
-Primero crea el curso con `POST /courses` usando el siguiente título y nivel (sin enviar id). Usa el id devuelto en las solicitudes siguientes. Los IDs 1 y 2 de estos ejemplos son ilustrativos:
+1. Crear curso y estudiante activo: 201 en ambos.
+2. Crear matrícula: 201; conservar su ID.
+3. Detener con Ctrl+C, ejecutar nuevamente `npm run start:dev` y consultar la matrícula:
+   200, mismo ID y objetos student/course. Capturar también la terminal del reinicio.
+4. Repetir el POST de matrícula: 409.
+5. Crear otro estudiante inactivo e intentar matricularlo: 400.
+6. Filtrar por estudiante y por curso: 200, incluye la matrícula.
+7. Cancelar: 204. Consultar la pareja: `[]`. Repetir DELETE: 404.
 
-```json
-{"id":1,"title":"NestJS Fundamentals","level":"beginner"}
-```
+En cada captura muestra método, URL, body (cuando corresponda), código HTTP y respuesta.
+La colección comprueba códigos, identidad de la matrícula y ausencia después de cancelar.
+Estos datos de demostración permanecen en tu base; las pruebas automatizadas usan esquemas separados.
 
-`POST /students`:
+Para sesión 9 también muestra POST /students, PATCH /students/:id, reinicio, GET /students/:id,
+filtros combinados y 409 al repetir el correo. Cambiar isActive a false y eliminar debe dar 409.
 
-```json
-{"name":"Ana Perez","email":"ana@example.com","age":20,"career":"Software","semester":3,"isActive":true}
-```
-
-Respuesta 201:
-
-```json
-{"name":"Ana Perez","email":"ana@example.com","age":20,"career":"Software","semester":3,"isActive":true,"id":1}
-```
-
-Crear el estudiante inactivo con `POST /students`:
-
-```json
-{"name":"Luis Perez","email":"luis@example.com","age":21,"career":"Software","semester":3,"isActive":false}
-```
-
-Respuesta 201: el mismo objeto con `id: 2`.
-
-### Matrícula válida
-
-`POST /enrollments`:
-
-```json
-{"studentId":1,"courseId":1}
-```
-
-Respuesta 201:
-
-```json
-{"id":1,"studentId":1,"courseId":1}
-```
-
-### Matrícula duplicada
-
-Repetir el POST anterior. Respuesta 409:
-
-```json
-{"message":"El estudiante ya está matriculado en este curso","error":"Conflict","statusCode":409}
-```
-
-### Estudiante inactivo
-
-`POST /enrollments` con `{"studentId":2,"courseId":1}`. Respuesta 409:
-
-```json
-{"message":"No se puede matricular a un estudiante inactivo","error":"Conflict","statusCode":409}
-```
-
-### Identificador inexistente
-
-`POST /enrollments` con `{"studentId":999,"courseId":1}`. Respuesta 404:
-
-```json
-{"message":"No existe el estudiante 999","error":"Not Found","statusCode":404}
-```
-
-`POST /enrollments` con `{"studentId":1,"courseId":999}`. Respuesta 404:
-
-```json
-{"message":"No existe el curso 999","error":"Not Found","statusCode":404}
-```
-
-### Filtros individuales y combinados
-
-Crear otra matrícula: `POST /enrollments` con `{"studentId":1,"courseId":2}`. Respuesta 201: `{"id":2,"studentId":1,"courseId":2}`.
-
-`GET /enrollments?studentId=1` y `GET /students/1/enrollments` → 200:
-
-```json
-[{"id":1,"studentId":1,"courseId":1},{"id":2,"studentId":1,"courseId":2}]
-```
-
-`GET /enrollments?courseId=1` y `GET /courses/1/enrollments` → 200:
-
-```json
-[{"id":1,"studentId":1,"courseId":1}]
-```
-
-`GET /enrollments?studentId=1&courseId=2` → 200:
-
-```json
-[{"id":2,"studentId":1,"courseId":2}]
-```
-
-`GET /enrollments?studentId=2&courseId=2` → 200: `[]`.
-
-### Cancelación
-
-`DELETE /enrollments/1` → 204 sin contenido.
-
-`GET /enrollments` → 200:
-
-```json
-[{"id":2,"studentId":1,"courseId":2}]
-```
-
-Repetir `DELETE /enrollments/1` → 404:
-
-```json
-{"message":"No existe la matrícula 1","error":"Not Found","statusCode":404}
-```
-
-Se permite volver a matricular a Ana en el curso 1; la nueva matrícula tendrá ID 3.
-
-### Validación de entradas
-
-| Solicitud | Respuesta |
-|---|---|
-| POST `/enrollments` con `{}` | 400: faltan los dos identificadores |
-| POST `/enrollments` con `{"studentId":"1","courseId":1}` | 400: studentId debe ser entero numérico |
-| POST `/enrollments` con `{"studentId":1,"courseId":1,"id":7}` | 400: propiedad id no permitida |
-| GET `/enrollments?studentId=0` | 400: identificador fuera de rango |
-| GET `/enrollments?studentId=1&studentId=2` | 400: filtro repetido |
-| GET `/enrollments?otro=1` | 400: propiedad no permitida |
-| DELETE `/enrollments/abc` | 400: Pipe rechaza el identificador |
-
-## Pruebas reproducibles
+## Pruebas
 
 ```powershell
 npm run test:integration
-npm run lint
 npm test
+npm run lint
 npm run test:e2e
 ```
 
-`test:integration` compila y ejecuta las pruebas HTTP de Cursos, Estudiantes y Matrículas con aplicaciones de prueba aisladas, sin alterar los datos del servidor usado en Postman. También se puede ejecutar `npm run test:enrollments` o `npm run test:students` por separado.
+También: `npm run test:students`, `npm run test:courses`, `npm run test:enrollments`
+y `npm run test:persistence`.
 
-`test/enrollments.http.test.mjs` cubre: matrícula válida usando un curso creado por HTTP, duplicados, estudiante inactivo, estudiante y curso inexistentes, filtros individuales y combinados, rutas anidadas, cancelación, nueva matrícula después de cancelar, entradas inválidas y propiedades adicionales. La suite de Estudiantes conserva la evidencia de sus flujos previos.
+Las pruebas HTTP crean esquemas PostgreSQL temporales únicos y los eliminan al terminar.
+No vacían las tablas del servidor utilizado en Postman. La cuenta de PostgreSQL necesita
+permiso CREATE sobre la base. La prueba e2e de la ruta raíz inicia AppModule con la
+configuración local y puede sincronizar el esquema de desarrollo, sin crear registros de ejemplo.
 
-## Evidencia de integración Git
+`test/persistence.http.test.mjs` verifica:
 
-Validación realizada el 21 de septiembre de 2026: compilación correcta, 15 pruebas HTTP aprobadas (7 de Matrículas y 8 de Estudiantes), 3 pruebas unitarias aprobadas, 1 prueba e2e aprobada y `npm run lint` sin errores. Total: 19 pruebas aprobadas, 0 fallidas.
+- Creación y actualización de estudiantes que sobreviven al cierre y reapertura de Nest y su conexión.
+- Correo único, filtros incluyendo false y reglas de eliminación.
+- Matrícula y relaciones que sobreviven a la reapertura.
+- Duplicado 409, inactivo 400, filtros, cancelación persistente y conservación de estudiante/curso.
+- Restricciones UNIQUE y claves foráneas directamente contra PostgreSQL.
+- Solicitudes simultáneas: una creación y conflictos 409, sin duplicados.
+- Restricción al borrar recursos matriculados y los tres niveles válidos de cursos.
 
-La rama `Trabajo_practico_semana_3` se incorporó desde `main` mediante un merge explícito. Se conservó además el merge previamente existente en `origin/main`.
+El reinicio automatizado recrea Nest dentro del proceso de prueba. Para la evidencia
+visual de entrega realiza además el reinicio real de terminal descrito arriba.
 
-```powershell
-git log --oneline --graph --all -12
-git show --no-patch --format=fuller 91d5c26
-```
+## Referencias
 
-El commit `91d5c26` registra el merge de Cursos y Estudiantes. Los commits posteriores contienen Matrículas y sus evidencias. Para la demostración, ejecutar los casos anteriores y mostrar sus respuestas en Postman junto al historial Git.
+- [Sesión 9: estudiantes persistentes](https://epanchanaf.github.io/nestjs-course/semana-05/sesion-09)
+- [Sesión 10: relaciones persistentes](https://epanchanaf.github.io/nestjs-course/semana-05/sesion-10)
+- [Práctica previa de semana 3](SEMANA-3.md)
 
-Más documentación de la práctica previa: [SEMANA-3.md](SEMANA-3.md).
+## Verificación realizada — 5 de octubre de 2026
 
-Validación de sesión 8 (29 de septiembre de 2026): build y lint correctos; 16 pruebas HTTP, 3 unitarias y 1 e2e aprobadas. La conexión real a PostgreSQL y la persistencia al reabrir la aplicación quedaron verificadas.
+Compilación y lint correctos. Pasaron 17 pruebas HTTP de integración (incluida
+persistencia y concurrencia), 3 unitarias y 1 e2e: 21 pruebas, 0 fallidas.
+También se reprodujeron las 12 solicitudes de la colección de entrega contra una
+aplicación aislada, comprobando sus variables, cuerpos y aserciones de respuesta.
+La reproducción automatizada no sustituye las capturas de Postman y del reinicio
+manual que se soliciten para subir la tarea.

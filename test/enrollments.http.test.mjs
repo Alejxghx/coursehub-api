@@ -5,6 +5,14 @@ import { createTestApp } from './database.mjs';
 import { ValidationPipe } from '@nestjs/common';
 import request from 'supertest';
 
+function enrollmentIds(enrollment) {
+  return {
+    id: enrollment.id,
+    studentId: enrollment.student.id,
+    courseId: enrollment.course.id,
+  };
+}
+
 const student = {
   name: 'Ana Perez',
   email: 'ana@example.com',
@@ -40,11 +48,15 @@ describe('Integración de Cursos, Estudiantes y Matrículas', () => {
       .post('/enrollments')
       .send(body)
       .expect(201)
-      .expect({ id: 1, ...body });
+      .expect((r) =>
+        assert.deepEqual(enrollmentIds(r.body), { id: 1, ...body }),
+      );
     await api
       .get('/enrollments')
       .expect(200)
-      .expect([{ id: 1, ...body }]);
+      .expect((r) =>
+        assert.deepEqual(r.body.map(enrollmentIds), [{ id: 1, ...body }]),
+      );
   });
 
   it('rechaza duplicados e inactivos sin consumir identificadores', async () => {
@@ -64,7 +76,7 @@ describe('Integración de Cursos, Estudiantes y Matrículas', () => {
     const inactive = await api
       .post('/enrollments')
       .send({ studentId: 1, courseId: 2 })
-      .expect(409);
+      .expect(400);
     assert.equal(
       inactive.body.message,
       'No se puede matricular a un estudiante inactivo',
@@ -74,7 +86,13 @@ describe('Integración de Cursos, Estudiantes y Matrículas', () => {
       .post('/enrollments')
       .send({ studentId: 1, courseId: 2 })
       .expect(201)
-      .expect({ id: 2, studentId: 1, courseId: 2 });
+      .expect((r) =>
+        assert.deepEqual(enrollmentIds(r.body), {
+          id: 2,
+          studentId: 1,
+          courseId: 2,
+        }),
+      );
   });
 
   it('responde 404 para recursos inexistentes y no guarda la matrícula', async () => {
@@ -135,12 +153,22 @@ describe('Integración de Cursos, Estudiantes y Matrículas', () => {
     await api
       .get('/enrollments')
       .expect(200)
-      .expect([{ id: 2, studentId: 1, courseId: 2 }]);
+      .expect((r) =>
+        assert.deepEqual(r.body.map(enrollmentIds), [
+          { id: 2, studentId: 1, courseId: 2 },
+        ]),
+      );
     await api
       .post('/enrollments')
       .send({ studentId: 1, courseId: 1 })
       .expect(201)
-      .expect({ id: 3, studentId: 1, courseId: 1 });
+      .expect((r) =>
+        assert.deepEqual(enrollmentIds(r.body), {
+          id: 3,
+          studentId: 1,
+          courseId: 1,
+        }),
+      );
     await api.get('/students/1').expect(200);
     await api.get('/courses/1').expect(200);
   });

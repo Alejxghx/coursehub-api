@@ -1,15 +1,16 @@
 import { Module } from '@nestjs/common';
 import { EnrollmentsController } from './enrollments.controller.js';
 import { EnrollmentsService } from './enrollments.service.js';
-import { StudentsModule } from '../students/students.module.js';
-import { CoursesModule } from '../courses/courses.module.js';
+import { TypeOrmModule } from '@nestjs/typeorm';
+import { Student } from '../students/entities/student.entity.js';
+import { Course } from '../courses/entities/course.entity.js';
+import { Enrollment } from './entities/enrollment.entity.js';
 
 @Module({
-  imports: [StudentsModule, CoursesModule],
+  imports: [TypeOrmModule.forFeature([Enrollment, Student, Course])],
   controllers: [EnrollmentsController],
   providers: [EnrollmentsService],
 })
 export class EnrollmentsModule {}
 
-
-// Necesitamos consultar Estudiantes y Cursos para comprobar que ambos existan antes de matricular
+// Los repositorios permiten validar las relaciones antes de guardar.
