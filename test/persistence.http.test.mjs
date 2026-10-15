@@ -15,7 +15,11 @@ it('sesiones 9 y 10: persistencia, restricciones y flujo completo de entrega', a
   const open = async () => {
     app = await database.open();
     app.useGlobalPipes(
-      new ValidationPipe({ whitelist: true, forbidNonWhitelisted: true }),
+      new ValidationPipe({
+        whitelist: true,
+        forbidNonWhitelisted: true,
+        transform: true,
+      }),
     );
     await app.init();
     api = request(app.getHttpServer());
@@ -64,10 +68,11 @@ it('sesiones 9 y 10: persistencia, restricciones y flujo completo de entrega', a
     await api.post('/students').send(input).expect(409);
     const persisted = (await api.get('/enrollments').query(pair).expect(200))
       .body;
-    assert.equal(persisted.length, 1);
-    assert.equal(persisted[0].id, enrollment.id);
-    assert.equal(persisted[0].student.semester, 7);
-    assert.equal(persisted[0].course.title, course.title);
+    assert.equal(persisted.meta.total, 1);
+    assert.equal(persisted.items.length, 1);
+    assert.equal(persisted.items[0].id, enrollment.id);
+    assert.equal(persisted.items[0].student.semester, 7);
+    assert.equal(persisted.items[0].course.title, course.title);
     await api.post('/enrollments').send(pair).expect(409);
 
     const inactive = (
@@ -90,7 +95,7 @@ it('sesiones 9 y 10: persistencia, restricciones y flujo completo de entrega', a
       const filtered = (await api.get('/enrollments').query(filter).expect(200))
         .body;
       assert.deepEqual(
-        filtered.map((item) => item.id),
+        filtered.items.map((item) => item.id),
         [enrollment.id],
       );
     }
@@ -169,7 +174,10 @@ it('sesiones 9 y 10: persistencia, restricciones y flujo completo de entrega', a
       .expect(204)
       .expect('');
     await restart();
-    await api.get('/enrollments').query(pair).expect(200).expect([]);
+    await api.get('/enrollments').query(pair).expect(200).expect((r) => {
+      assert.deepEqual(r.body.items, []);
+      assert.equal(r.body.meta.total, 0);
+    });
     await api.delete('/enrollments/' + enrollment.id).expect(404);
     await api.get('/students/' + student.id).expect(200);
     await api.get('/courses/' + course.id).expect(200);

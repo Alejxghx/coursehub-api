@@ -28,7 +28,11 @@ describe('Integración de Cursos, Estudiantes y Matrículas', () => {
   beforeEach(async () => {
     app = await createTestApp({ seedCourses: true });
     app.useGlobalPipes(
-      new ValidationPipe({ whitelist: true, forbidNonWhitelisted: true }),
+      new ValidationPipe({
+        whitelist: true,
+        forbidNonWhitelisted: true,
+        transform: true,
+      }),
     );
     await app.init();
     api = request(app.getHttpServer());
@@ -55,7 +59,7 @@ describe('Integración de Cursos, Estudiantes y Matrículas', () => {
       .get('/enrollments')
       .expect(200)
       .expect((r) =>
-        assert.deepEqual(r.body.map(enrollmentIds), [{ id: 1, ...body }]),
+        assert.deepEqual(r.body.items.map(enrollmentIds), [{ id: 1, ...body }]),
       );
   });
 
@@ -105,7 +109,10 @@ describe('Integración de Cursos, Estudiantes y Matrículas', () => {
     await api.get('/students/999/enrollments').expect(404);
     await api.get('/courses/999/enrollments').expect(404);
     await api.delete('/enrollments/999').expect(404);
-    await api.get('/enrollments').expect(200).expect([]);
+    await api.get('/enrollments').expect(200).expect((r) => {
+      assert.deepEqual(r.body.items, []);
+      assert.equal(r.body.meta.total, 0);
+    });
   });
 
   it('filtra por estudiante, curso y la intersección de ambos', async () => {
@@ -132,10 +139,10 @@ describe('Integración de Cursos, Estudiantes y Matrículas', () => {
       ['/courses/3/enrollments', []],
     ]) {
       const result = await api.get(url).expect(200);
-      assert.deepEqual(
-        result.body.map((item) => item.id),
-        ids,
-      );
+      const actualIds = url.startsWith('/enrollments')
+        ? result.body.items.map((item) => item.id)
+        : result.body.map((item) => item.id);
+      assert.deepEqual(actualIds, ids);
     }
   });
 
@@ -154,7 +161,7 @@ describe('Integración de Cursos, Estudiantes y Matrículas', () => {
       .get('/enrollments')
       .expect(200)
       .expect((r) =>
-        assert.deepEqual(r.body.map(enrollmentIds), [
+        assert.deepEqual(r.body.items.map(enrollmentIds), [
           { id: 2, studentId: 1, courseId: 2 },
         ]),
       );
@@ -186,7 +193,10 @@ describe('Integración de Cursos, Estudiantes y Matrículas', () => {
     ]) {
       await api.post('/enrollments').send(body).expect(400);
     }
-    await api.get('/enrollments').expect(200).expect([]);
+    await api.get('/enrollments').expect(200).expect((r) => {
+      assert.deepEqual(r.body.items, []);
+      assert.equal(r.body.meta.total, 0);
+    });
   });
 
   it('valida los filtros y los identificadores de todas las rutas nuevas', async () => {

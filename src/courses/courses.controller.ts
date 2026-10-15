@@ -12,14 +12,15 @@ import {
 import { CoursesService } from './courses.service.js';
 import { CreateCourseDto } from './dto/create-course.dto.js';
 import { UpdateCourseDto } from './dto/update-course.dto.js';
+import { CoursesQueryDto } from './dto/courses-query.dto.js';
 
 @Controller('courses')
 export class CoursesController {
   constructor(private readonly coursesService: CoursesService) {}
 
   @Get()
-  findAll(@Query('level') level?: string) {
-    return this.coursesService.findAll(level);
+  findAll(@Query() query: CoursesQueryDto) {
+    return this.coursesService.findAll(query);
   }
 
   @Get(':id')

@@ -12,14 +12,21 @@ it('CRUD de cursos conserva datos después de reiniciar la aplicación', async (
   const open = async () => {
     app = await database.open();
     app.useGlobalPipes(
-      new ValidationPipe({ whitelist: true, forbidNonWhitelisted: true }),
+      new ValidationPipe({
+        whitelist: true,
+        forbidNonWhitelisted: true,
+        transform: true,
+      }),
     );
     await app.init();
     api = request(app.getHttpServer());
   };
   try {
     await open();
-    await api.get('/courses').expect(200).expect([]);
+    await api.get('/courses').expect(200).expect({
+      items: [],
+      meta: { total: 0, page: 1, limit: 10, totalPages: 0 },
+    });
     await api
       .post('/courses')
       .send({ title: '', level: 'invalid' })
@@ -40,12 +47,12 @@ it('CRUD de cursos conserva datos después de reiniciar la aplicación', async (
       .expect(201);
     const all = await api.get('/courses').expect(200);
     assert.deepEqual(
-      all.body.map((course) => course.id),
+      all.body.items.map((course) => course.id),
       [id, id + 1, id + 2],
     );
     const filtered = await api.get('/courses?level=beginner').expect(200);
     assert.deepEqual(
-      filtered.body.map((course) => course.id),
+      filtered.body.items.map((course) => course.id),
       [id, id + 2],
     );
     await app.close();
@@ -87,7 +94,7 @@ it('CRUD de cursos conserva datos después de reiniciar la aplicación', async (
     await api.delete('/courses/' + id).expect(404);
     await api.get('/courses/no-numero').expect(400);
     const remaining = await api.get('/courses').expect(200);
-    assert.equal(remaining.body.length, 2);
+    assert.equal(remaining.body.items.length, 2);
   } finally {
     try {
       await app?.close();

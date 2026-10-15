@@ -1,0 +1,96 @@
+{
+  "info": {
+    "name": "CourseHub — Entrega sesiones 11 y 12",
+    "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
+  },
+  "variable": [
+    { "key": "baseUrl", "value": "http://localhost:3000" }
+  ],
+  "item": [
+    {
+      "name": "11 — Cursos paginados, filtrados y ordenados",
+      "request": {
+        "method": "GET",
+        "header": [],
+        "url": "{{baseUrl}}/courses?level=beginner&page=1&limit=5&sortBy=title&order=ASC"
+      },
+      "event": [{
+        "listen": "test",
+        "script": {
+          "type": "text/javascript",
+          "exec": [
+            "pm.test('HTTP 200 y contrato paginado', () => { pm.response.to.have.status(200); const body = pm.response.json(); pm.expect(body.items).to.be.an('array'); pm.expect(body.items.length).to.be.at.most(5); pm.expect(body.meta).to.include({ page: 1, limit: 5 }); });"
+          ]
+        }
+      }]
+    },
+    {
+      "name": "11 — Parámetros inválidos: 400",
+      "request": {
+        "method": "GET",
+        "header": [],
+        "url": "{{baseUrl}}/courses?page=0&limit=200&sortBy=createdAt&order=sideways"
+      },
+      "event": [{
+        "listen": "test",
+        "script": {
+          "type": "text/javascript",
+          "exec": [
+            "pm.test('Rechaza parámetros inválidos', () => pm.response.to.have.status(400));"
+          ]
+        }
+      }]
+    },
+    {
+      "name": "12 — Búsqueda relacionada y filtros combinados",
+      "request": {
+        "method": "GET",
+        "header": [],
+        "url": "{{baseUrl}}/enrollments?search=nest&activeOnly=true&page=1&limit=5"
+      },
+      "event": [{
+        "listen": "test",
+        "script": {
+          "type": "text/javascript",
+          "exec": [
+            "pm.test('HTTP 200 con relaciones y metadatos', () => { pm.response.to.have.status(200); const body = pm.response.json(); pm.expect(body.items).to.be.an('array'); pm.expect(body.items.length).to.be.at.most(5); pm.expect(body.meta).to.include({ page: 1, limit: 5 }); body.items.forEach(item => { pm.expect(item.student).to.be.an('object'); pm.expect(item.course).to.be.an('object'); pm.expect(item.student.isActive).to.eql(true); }); });"
+          ]
+        }
+      }]
+    },
+    {
+      "name": "12 — Búsqueda sin coincidencias",
+      "request": {
+        "method": "GET",
+        "header": [],
+        "url": "{{baseUrl}}/enrollments?search=__sin_coincidencias__&page=1&limit=5"
+      },
+      "event": [{
+        "listen": "test",
+        "script": {
+          "type": "text/javascript",
+          "exec": [
+            "pm.test('Colección vacía es HTTP 200', () => { pm.response.to.have.status(200); const body = pm.response.json(); pm.expect(body.items).to.eql([]); pm.expect(body.meta.total).to.eql(0); });"
+          ]
+        }
+      }]
+    },
+    {
+      "name": "12 — Texto de búsqueda se trata como dato",
+      "request": {
+        "method": "GET",
+        "header": [],
+        "url": "{{baseUrl}}/enrollments?search=%27%20OR%201%3D1%20--&page=1&limit=5"
+      },
+      "event": [{
+        "listen": "test",
+        "script": {
+          "type": "text/javascript",
+          "exec": [
+            "pm.test('La búsqueda SQL-like no altera la consulta', () => { pm.response.to.have.status(200); const body = pm.response.json(); pm.expect(body.items).to.be.an('array'); pm.expect(body.meta).to.have.property('total'); });"
+          ]
+        }
+      }]
+    }
+  ]
+}

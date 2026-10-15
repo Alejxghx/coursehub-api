@@ -1,4 +1,4 @@
-# CourseHub API — Sesiones 9 y 10
+# CourseHub API — Sesiones 9 a 12
 
 Cursos, estudiantes y matrículas persistentes en PostgreSQL con NestJS y TypeORM.
 
@@ -53,12 +53,39 @@ Student 1 ---- * Enrollment * ---- 1 Course
 El controlador valida la entrada y delega al servicio. Los repositorios realizan el acceso a datos.
 `Relation<T>` evita evaluar prematuramente los tipos de entidades que se importan mutuamente en ESM.
 
+## Sesiones 11 y 12: consultas paginadas y relacionadas
+
+`GET /courses` acepta `level`, `page`, `limit`, `sortBy` y `order`. Por ejemplo:
+
+```http
+GET /courses?level=beginner&page=1&limit=5&sortBy=title&order=ASC
+```
+
+Los valores predeterminados son `page=1`, `limit=10`, `sortBy=id` y `order=ASC`.
+`limit` admite hasta 50 registros; `sortBy` solo acepta `id`, `title` o `level` y el
+ordenamiento agrega `id` como desempate estable. La respuesta usa `{ items, meta }`,
+donde `meta` contiene `total`, `page`, `limit` y `totalPages`.
+
+`GET /enrollments` combina `search`, `studentId`, `courseId`, `activeOnly`, `page`
+y `limit`. La búsqueda parcial no distingue mayúsculas y se aplica al nombre del
+estudiante o al título del curso. Ejemplo:
+
+```http
+GET /enrollments?search=nest&activeOnly=true&page=1&limit=5
+```
+
+La consulta usa `QueryBuilder` con joins a estudiante y curso, parámetros SQL para
+la búsqueda y orden fijo por ID. `activeOnly` acepta `true` o `false`. La respuesta
+también usa `{ items, meta }`; una búsqueda sin coincidencias devuelve `200`,
+`items: []` y `total: 0`. En ambos endpoints `page` empieza en 1 y `limit` está
+limitado a 50; los parámetros inválidos o desconocidos devuelven `400`.
+
 ## Endpoints
 
 | Método | Ruta | Respuesta |
 |---|---|---|
 | POST | /courses | 201 |
-| GET | /courses?level=beginner | 200 |
+| GET | /courses?level=beginner&page=1&limit=10&sortBy=id&order=ASC | 200 `{ items, meta }` |
 | GET / PATCH | /courses/:id | 200 |
 | DELETE | /courses/:id | 200, curso eliminado |
 | POST | /students | 201 |
@@ -67,13 +94,14 @@ El controlador valida la entrada y delega al servicio. Los repositorios realizan
 | PATCH | /students/:id/status | 200 |
 | DELETE | /students/:id | 204 |
 | POST | /enrollments | 201 |
-| GET | /enrollments?studentId=3&courseId=5 | 200 |
+| GET | /enrollments?studentId=3&courseId=5&page=1&limit=10 | 200 `{ items, meta }` |
 | GET | /students/:studentId/enrollments | 200 |
 | GET | /courses/:courseId/enrollments | 200 |
 | DELETE | /enrollments/:id | 204 |
 
 Los filtros son opcionales y combinables con AND. Las rutas anidadas validan que
-exista el recurso padre. Los listados sin coincidencias devuelven `[]`.
+exista el recurso padre. Los listados paginados sin coincidencias devuelven
+`{ items: [], meta: { total: 0, ... } }`.
 No existe GET /enrollments/:id: para encontrar la matrícula utiliza sus filtros.
 
 Cursos conserva únicamente los niveles beginner, intermediate y advanced en los DTOs.
@@ -81,7 +109,8 @@ PATCH conserva los campos omitidos. Un id de curso no numérico devuelve 400.
 
 ## Evidencias para entregar en Postman
 
-Importa [la colección de sesiones 9 y 10](postman/sesiones-9-10.postman_collection.json).
+Importa [la colección de sesiones 9 y 10](postman/sesiones-9-10.postman_collection.json)
+o [la colección de sesiones 11 y 12](postman/sesiones-11-12.postman_collection.json).
 Usa baseUrl = http://localhost:3000. Ejecútala manualmente en orden; no ejecutes toda
 la colección de una vez, porque debes detener e iniciar la API entre los pasos 02 y 03.
 La colección prepara correos distintos por ejecución y guarda los IDs de las respuestas.
@@ -90,15 +119,19 @@ Los cuerpos JSON de matrículas usan variables numéricas sin comillas.
 1. Crear curso y estudiante activo: 201 en ambos.
 2. Crear matrícula: 201; conservar su ID.
 3. Detener con Ctrl+C, ejecutar nuevamente `npm run start:dev` y consultar la matrícula:
-   200, mismo ID y objetos student/course. Capturar también la terminal del reinicio.
+   200, mismo ID dentro de `items` y objetos student/course. Capturar también la terminal del reinicio.
 4. Repetir el POST de matrícula: 409.
 5. Crear otro estudiante inactivo e intentar matricularlo: 400.
-6. Filtrar por estudiante y por curso: 200, incluye la matrícula.
-7. Cancelar: 204. Consultar la pareja: `[]`. Repetir DELETE: 404.
+6. Filtrar por estudiante y por curso: 200, incluye la matrícula en `items`.
+7. Cancelar: 204. Consultar la pareja: `items: []` y `meta.total: 0`. Repetir DELETE: 404.
 
 En cada captura muestra método, URL, body (cuando corresponda), código HTTP y respuesta.
 La colección comprueba códigos, identidad de la matrícula y ausencia después de cancelar.
 Estos datos de demostración permanecen en tu base; las pruebas automatizadas usan esquemas separados.
+
+Para sesiones 11 y 12 importa la colección correspondiente y ejecuta las cinco
+solicitudes en orden. Incluye un listado de cursos válido e inválido, una búsqueda
+combinada de matrículas, una búsqueda vacía y un término SQL-like parametrizado.
 
 Para sesión 9 también muestra POST /students, PATCH /students/:id, reinicio, GET /students/:id,
 filtros combinados y 409 al repetir el correo. Cambiar isActive a false y eliminar debe dar 409.

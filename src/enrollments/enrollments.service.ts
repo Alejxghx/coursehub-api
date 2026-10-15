@@ -12,6 +12,7 @@ import { Student } from '../students/entities/student.entity.js';
 import { Course } from '../courses/entities/course.entity.js';
 import type { CreateEnrollmentDto } from './dto/create-enrollment.dto.js';
 import { postgresErrorCode } from '../common/postgres-error.js';
+import type { EnrollmentsQueryDto } from './dto/enrollments-query.dto.js';
 
 @Injectable()
 export class EnrollmentsService {
@@ -69,6 +70,43 @@ export class EnrollmentsService {
       relations: { student: true, course: true },
       order: { id: 'ASC' },
     });
+  }
+
+  async search(query: EnrollmentsQueryDto) {
+    const { search, studentId, courseId, activeOnly, page, limit } = query;
+    const queryBuilder = this.enrollmentsRepository
+      .createQueryBuilder('enrollment')
+      .leftJoinAndSelect('enrollment.student', 'student')
+      .leftJoinAndSelect('enrollment.course', 'course');
+
+    if (search) {
+      queryBuilder.andWhere(
+        '(student.name ILIKE :search OR course.title ILIKE :search)',
+        { search: `%${search}%` },
+      );
+    }
+    if (studentId !== undefined) {
+      queryBuilder.andWhere('student.id = :studentId', { studentId });
+    }
+    if (courseId !== undefined) {
+      queryBuilder.andWhere('course.id = :courseId', { courseId });
+    }
+    if (activeOnly === 'true') {
+      queryBuilder.andWhere('student.isActive = :active', { active: true });
+    } else if (activeOnly === 'false') {
+      queryBuilder.andWhere('student.isActive = :active', { active: false });
+    }
+
+    const [items, total] = await queryBuilder
+      .orderBy('enrollment.id', 'ASC')
+      .skip((page - 1) * limit)
+      .take(limit)
+      .getManyAndCount();
+
+    return {
+      items,
+      meta: { total, page, limit, totalPages: Math.ceil(total / limit) },
+    };
   }
 
   async findByStudent(studentId: number): Promise<Enrollment[]> {

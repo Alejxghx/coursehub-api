@@ -7,11 +7,10 @@ import {
   Param,
   Post,
   Query,
-  ValidationPipe,
 } from '@nestjs/common';
 import { EnrollmentsService } from './enrollments.service.js';
 import { CreateEnrollmentDto } from './dto/create-enrollment.dto.js';
-import { FilterEnrollmentsDto } from './dto/filter-enrollments.dto.js';
+import { EnrollmentsQueryDto } from './dto/enrollments-query.dto.js';
 import { EnrollmentIdPipe } from './pipes/enrollment-id.pipe.js';
 
 @Controller()
@@ -24,11 +23,8 @@ export class EnrollmentsController {
   }
 
   @Get('enrollments')
-  findAll(
-    @Query(new ValidationPipe({ transform: true }))
-    filters: FilterEnrollmentsDto,
-  ) {
-    return this.enrollmentsService.findAll(filters.studentId, filters.courseId);
+  findAll(@Query() query: EnrollmentsQueryDto) {
+    return this.enrollmentsService.search(query);
   }
 
   @Get('students/:studentId/enrollments')

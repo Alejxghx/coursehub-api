@@ -136,7 +136,7 @@
             "type": "text/javascript",
             "exec": [
               "pm.test('HTTP 200', () => pm.response.to.have.status(200));",
-              "pm.test('Conserva el ID y las relaciones', () => { const rows = pm.response.json(); pm.expect(rows).to.have.lengthOf(1); pm.expect(rows[0].id).to.eql(Number(pm.collectionVariables.get('enrollmentId'))); pm.expect(rows[0].student.id).to.eql(Number(pm.collectionVariables.get('studentId'))); pm.expect(rows[0].course.id).to.eql(Number(pm.collectionVariables.get('courseId'))); });"
+              "pm.test('Conserva el ID y las relaciones', () => { const { items, meta } = pm.response.json(); pm.expect(meta.total).to.eql(1); pm.expect(items).to.have.lengthOf(1); pm.expect(items[0].id).to.eql(Number(pm.collectionVariables.get('enrollmentId'))); pm.expect(items[0].student.id).to.eql(Number(pm.collectionVariables.get('studentId'))); pm.expect(items[0].course.id).to.eql(Number(pm.collectionVariables.get('courseId'))); });"
             ]
           }
         }
@@ -256,7 +256,7 @@
             "type": "text/javascript",
             "exec": [
               "pm.test('HTTP 200', () => pm.response.to.have.status(200));",
-              "pm.test('Incluye la matrícula', () => pm.expect(pm.response.json().map(x => x.id)).to.include(Number(pm.collectionVariables.get('enrollmentId'))));"
+              "pm.test('Incluye la matrícula', () => pm.expect(pm.response.json().items.map(x => x.id)).to.include(Number(pm.collectionVariables.get('enrollmentId'))));"
             ]
           }
         }
@@ -276,7 +276,7 @@
             "type": "text/javascript",
             "exec": [
               "pm.test('HTTP 200', () => pm.response.to.have.status(200));",
-              "pm.test('Incluye la matrícula', () => pm.expect(pm.response.json().map(x => x.id)).to.include(Number(pm.collectionVariables.get('enrollmentId'))));"
+              "pm.test('Incluye la matrícula', () => pm.expect(pm.response.json().items.map(x => x.id)).to.include(Number(pm.collectionVariables.get('enrollmentId'))));"
             ]
           }
         }
@@ -315,7 +315,7 @@
             "type": "text/javascript",
             "exec": [
               "pm.test('HTTP 200', () => pm.response.to.have.status(200));",
-              "pm.test('Sin matrícula', () => pm.expect(pm.response.json()).to.eql([]));"
+              "pm.test('Sin matrícula', () => { const { items, meta } = pm.response.json(); pm.expect(items).to.eql([]); pm.expect(meta.total).to.eql(0); });"
             ]
           }
         }
