@@ -1,5 +1,5 @@
 import { Transform, Type } from 'class-transformer';
-import { IsIn, IsInt, IsOptional, IsString, Max, Min } from 'class-validator';
+import { IsIn, IsInt, IsOptional, Max, Min } from 'class-validator';
 
 const COURSE_LEVELS = ['beginner', 'intermediate', 'advanced'] as const;
 const COURSE_SORT_FIELDS = ['id', 'title', 'level'] as const;

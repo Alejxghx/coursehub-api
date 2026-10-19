@@ -1,10 +1,12 @@
-# CourseHub API — Sesiones 9 a 12
+# CourseHub API — Sesiones 9 a 14
 
 Cursos, estudiantes y matrículas persistentes en PostgreSQL con NestJS y TypeORM.
 
 ## Ejecutar
 
-Desde `aplicaciones-servidor-web/coursehub-api`:
+Requisitos: Node.js 24 LTS con npm y PostgreSQL local (por ejemplo PostgreSQL 16, instalado con el gestor de paquetes de tu sistema). La base de datos debe existir y el usuario debe poder conectarse y crear tablas en desarrollo.
+
+Desde la carpeta `coursehub-api`:
 
 ```powershell
 npm ci
@@ -17,11 +19,79 @@ npm run start:dev
 
 La base indicada en `DATABASE_NAME` debe existir. Variables: `DATABASE_HOST`,
 `DATABASE_PORT`, `DATABASE_USER`, `DATABASE_PASSWORD`, `DATABASE_NAME` y opcionalmente
-`PORT` (3000 por defecto). Nunca subas `.env` con credenciales.
+`PORT` (3000 por defecto) y `NODE_ENV` (`development` por defecto). `DATABASE_PORT` usa 5432 si se omite. Nunca subas `.env` con credenciales.
 
 `autoLoadEntities: true` incorpora las entidades registradas mediante `forFeature`.
-`synchronize: true` crea/actualiza las tablas para esta práctica de desarrollo;
-en producción se utilizan migraciones. No se precargan datos de ejemplo en la API.
+`synchronize` crea/actualiza tablas únicamente con `NODE_ENV=development`.
+En `test` y `production` es `false`: el esquema debe existir previamente. Esta
+entrega no implementa ni ejecuta migraciones. No se precargan datos de ejemplo en la API.
+
+
+## Sesiones 13 y 14: configuración validada por ambiente
+
+La sesión 13 añade Joi para validar el entorno antes de conectar a PostgreSQL.
+`NODE_ENV` solo admite `development`, `test` o `production`; ambos puertos deben
+ser enteros entre 1 y 65535. Host, nombre de base, usuario y contraseña son
+obligatorios. La contraseña puede estar vacía en desarrollo o pruebas, pero en
+producción debe contener texto. Los errores nombran la variable y la regla
+incumplida, sin imprimir sus valores.
+
+La sesión 14 centraliza las opciones de TypeORM y activa la sincronización solo
+en desarrollo. Se mantienen `DATABASE_*`, equivalentes a los `DB_*` de las
+páginas del curso, para conservar el contrato del proyecto.
+
+Archivos añadidos:
+
+- `src/config/environment.ts`: esquema Joi y validación con mensajes sin secretos.
+- `src/config/database.config.ts`: conexión y política de sincronización.
+- `src/config/environment.spec.ts`: pruebas de validación y de los tres ambientes.
+
+Archivos modificados:
+
+- `src/app.module.ts`: conecta la validación y la fábrica de TypeORM.
+- `src/main.ts`: obtiene `PORT` mediante `ConfigService.getOrThrow`.
+- `.env.example`: incorpora `NODE_ENV` y `PORT`, con credenciales ficticias.
+- `.gitignore`: ignora `.env` y sus variantes, salvo `.env.example`.
+- `package.json` y `package-lock.json`: incorporan Joi.
+
+En Linux/macOS, prepara el entorno sin sobrescribir un archivo existente:
+
+```bash
+npm ci
+cp -n .env.example .env
+# Edita .env con los datos de tu PostgreSQL local.
+npm run start:dev
+```
+
+La aplicación carga `.env`; las variables del proceso tienen prioridad. Los
+archivos `.env.production` o similares están ignorados, pero no se seleccionan
+automáticamente. En un despliegue suministra las variables desde su entorno.
+
+Para ver el cambio de puerto en Linux/macOS:
+
+```bash
+PORT=3100 npm run start:dev
+# En otra terminal:
+curl http://localhost:3100/courses
+```
+
+Con una configuración local válida, `DATABASE_PORT=not-a-number npm run start`
+debe fallar antes de conectarse e identificar `DATABASE_PORT`. Para comprobar los
+ambientes sin tocar una base ni alterar `.env`, ejecuta:
+
+```bash
+npx vitest run src/config/environment.spec.ts
+```
+
+Las pruebas comprueban `synchronize=true` en desarrollo y `false` en test y
+producción. Para una comprobación manual de producción utiliza exclusivamente
+una base local cuyo esquema ya exista: `NODE_ENV=production npm run start`.
+Al terminar ese proceso, la variable temporal deja de aplicarse.
+
+`.env.example` y el README se pueden entregar; `.env` y sus variantes locales
+no se comparten. Una contraseña publicada permitiría intentar acceder a la base.
+Cambiar `NODE_ENV` modifica la política porque la fábrica compara su valor con
+`development`; sincronizar contra datos reales podría alterar su estructura.
 
 ## Sesión 9: estudiantes persistentes
 
