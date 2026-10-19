@@ -1,0 +1,208 @@
+{
+  "info": {
+    "name": "CourseHub — Sesión 15: registro de usuarios",
+    "description": "Ejecutar en orden. Usa contraseñas ficticias. El registro válido permanece en la base local; la colección no imprime hashes.",
+    "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
+  },
+  "variable": [
+    {
+      "key": "baseUrl",
+      "value": "http://localhost:3000"
+    }
+  ],
+  "item": [
+    {
+      "name": "01 — Registro válido: 201",
+      "request": {
+        "method": "POST",
+        "header": [
+          {
+            "key": "Content-Type",
+            "value": "application/json"
+          }
+        ],
+        "body": {
+          "mode": "raw",
+          "raw": "{\n  \"email\": \"{{registrationEmail}}\",\n  \"password\": \"aprendo-nest-2026\"\n}"
+        },
+        "url": "{{baseUrl}}/auth/register"
+      },
+      "event": [
+        {
+          "listen": "prerequest",
+          "script": {
+            "type": "text/javascript",
+            "exec": [
+              "pm.collectionVariables.set('registrationEmail', 'sesion15-' + pm.variables.replaceIn('{{$guid}}') + '@example.com');"
+            ]
+          }
+        },
+        {
+          "listen": "test",
+          "script": {
+            "type": "text/javascript",
+            "exec": [
+              "pm.test('HTTP 201', () => pm.response.to.have.status(201));",
+              "pm.test('Sin secretos en respuesta', () => { const body = pm.response.json(); pm.expect(body).not.to.have.property('password'); pm.expect(body).not.to.have.property('passwordHash'); });",
+              "pm.test('Solo datos seguros', () => { const body = pm.response.json(); pm.expect(Object.keys(body).sort()).to.eql(['createdAt', 'email', 'id']); pm.expect(body.email).to.eql(pm.collectionVariables.get('registrationEmail')); });"
+            ]
+          }
+        }
+      ]
+    },
+    {
+      "name": "02 — Correo duplicado con mayúsculas: 409",
+      "request": {
+        "method": "POST",
+        "header": [
+          {
+            "key": "Content-Type",
+            "value": "application/json"
+          }
+        ],
+        "body": {
+          "mode": "raw",
+          "raw": "{\n  \"email\": \"{{uppercaseEmail}}\",\n  \"password\": \"otra-clave-practica\"\n}"
+        },
+        "url": "{{baseUrl}}/auth/register"
+      },
+      "event": [
+        {
+          "listen": "prerequest",
+          "script": {
+            "type": "text/javascript",
+            "exec": [
+              "pm.collectionVariables.set('uppercaseEmail', pm.collectionVariables.get('registrationEmail').toUpperCase());"
+            ]
+          }
+        },
+        {
+          "listen": "test",
+          "script": {
+            "type": "text/javascript",
+            "exec": [
+              "pm.test('HTTP 409', () => pm.response.to.have.status(409));",
+              "pm.test('Sin secretos en respuesta', () => { const body = pm.response.json(); pm.expect(body).not.to.have.property('password'); pm.expect(body).not.to.have.property('passwordHash'); });"
+            ]
+          }
+        }
+      ]
+    },
+    {
+      "name": "03 — Sin email: 400",
+      "request": {
+        "method": "POST",
+        "header": [
+          {
+            "key": "Content-Type",
+            "value": "application/json"
+          }
+        ],
+        "body": {
+          "mode": "raw",
+          "raw": "{\n  \"password\": \"aprendo-nest-2026\"\n}"
+        },
+        "url": "{{baseUrl}}/auth/register"
+      },
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "type": "text/javascript",
+            "exec": [
+              "pm.test('HTTP 400', () => pm.response.to.have.status(400));",
+              "pm.test('Sin secretos en respuesta', () => { const body = pm.response.json(); pm.expect(body).not.to.have.property('password'); pm.expect(body).not.to.have.property('passwordHash'); });"
+            ]
+          }
+        }
+      ]
+    },
+    {
+      "name": "04 — Sin password: 400",
+      "request": {
+        "method": "POST",
+        "header": [
+          {
+            "key": "Content-Type",
+            "value": "application/json"
+          }
+        ],
+        "body": {
+          "mode": "raw",
+          "raw": "{\n  \"email\": \"{{registrationEmail}}\"\n}"
+        },
+        "url": "{{baseUrl}}/auth/register"
+      },
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "type": "text/javascript",
+            "exec": [
+              "pm.test('HTTP 400', () => pm.response.to.have.status(400));",
+              "pm.test('Sin secretos en respuesta', () => { const body = pm.response.json(); pm.expect(body).not.to.have.property('password'); pm.expect(body).not.to.have.property('passwordHash'); });"
+            ]
+          }
+        }
+      ]
+    },
+    {
+      "name": "05 — Correo inválido: 400",
+      "request": {
+        "method": "POST",
+        "header": [
+          {
+            "key": "Content-Type",
+            "value": "application/json"
+          }
+        ],
+        "body": {
+          "mode": "raw",
+          "raw": "{\n  \"email\": \"no-es-correo\",\n  \"password\": \"aprendo-nest-2026\"\n}"
+        },
+        "url": "{{baseUrl}}/auth/register"
+      },
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "type": "text/javascript",
+            "exec": [
+              "pm.test('HTTP 400', () => pm.response.to.have.status(400));",
+              "pm.test('Sin secretos en respuesta', () => { const body = pm.response.json(); pm.expect(body).not.to.have.property('password'); pm.expect(body).not.to.have.property('passwordHash'); });"
+            ]
+          }
+        }
+      ]
+    },
+    {
+      "name": "06 — Contraseña de siete caracteres: 400",
+      "request": {
+        "method": "POST",
+        "header": [
+          {
+            "key": "Content-Type",
+            "value": "application/json"
+          }
+        ],
+        "body": {
+          "mode": "raw",
+          "raw": "{\n  \"email\": \"{{registrationEmail}}\",\n  \"password\": \"1234567\"\n}"
+        },
+        "url": "{{baseUrl}}/auth/register"
+      },
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "type": "text/javascript",
+            "exec": [
+              "pm.test('HTTP 400', () => pm.response.to.have.status(400));",
+              "pm.test('Sin secretos en respuesta', () => { const body = pm.response.json(); pm.expect(body).not.to.have.property('password'); pm.expect(body).not.to.have.property('passwordHash'); });"
+            ]
+          }
+        }
+      ]
+    }
+  ]
+}

@@ -1,4 +1,4 @@
-# CourseHub API — Sesiones 9 a 14
+# CourseHub API — Sesiones 9 a 15
 
 Cursos, estudiantes y matrículas persistentes en PostgreSQL con NestJS y TypeORM.
 
@@ -26,6 +26,53 @@ La base indicada en `DATABASE_NAME` debe existir. Variables: `DATABASE_HOST`,
 En `test` y `production` es `false`: el esquema debe existir previamente. Esta
 entrega no implementa ni ejecuta migraciones. No se precargan datos de ejemplo en la API.
 
+
+## Sesión 15: registro de usuarios
+
+`User` representa una cuenta de acceso independiente de `Student`. Se añadieron
+`UsersModule` (entidad y repositorio) y `AuthModule` (registro HTTP y hash).
+
+```http
+POST /auth/register
+Content-Type: application/json
+
+{
+  "email": "ana@example.com",
+  "password": "aprendo-nest-2026"
+}
+```
+
+Un registro válido devuelve `201` con únicamente `id`, `email` y `createdAt`.
+El correo se limpia y convierte a minúsculas. Un correo duplicado devuelve `409`,
+incluso si llega con otras mayúsculas o colisiona con otra solicitud simultánea.
+Correo inválido, campos ausentes y contraseña fuera de longitud devuelven `400`.
+La contraseña debe tener entre 8 y 72 caracteres y como máximo 72 bytes UTF-8;
+no se modifica con trim ni conversión de mayúsculas.
+
+`AuthService` calcula bcrypt con costo 12 y sal por contraseña; `UsersService`
+recibe únicamente el hash para persistir. La tabla `users` contiene `id`, `email`
+único, `password_hash` y `created_at`. La columna del hash usa `select: false`.
+El controlador nunca devuelve la entidad completa ni registra la contraseña.
+
+Con tu `.env` local configurado, ejecuta `npm ci` y `npm run start:dev` en
+`NODE_ENV=development`: TypeORM creará la tabla `users`. En producción el esquema
+debe prepararse mediante la estrategia de migraciones correspondiente.
+
+Importa [la colección de sesión 15](postman/sesion-15.postman_collection.json) y
+ejecútala en orden. Incluye registro válido, duplicado con mayúsculas, ausencia de
+email, ausencia de password, correo inválido y contraseña corta. Los casos `400`
+y `409` no deben crear filas; el registro válido queda en la base local.
+
+Verificación automatizada: `npm run test:auth` compila y ejecuta pruebas HTTP con
+los servicios reales, bcrypt real y un repositorio simulado. Cubre normalización,
+respuesta segura, longitud, caracteres multibyte, sal y costo de bcrypt, y manejo
+de la colisión UNIQUE. Estas pruebas no comprueban persistencia ni restricciones
+en un servidor PostgreSQL real. Para comprobarlas localmente, consulta la tabla
+`users` tras registrar y reinicia la API; evita incluir hashes en capturas públicas.
+
+La contraseña pasa del cuerpo HTTP al DTO, se procesa en `AuthService` y solo su
+hash llega a PostgreSQL. El texto original existe temporalmente durante esa
+solicitud; la base conserva el hash para una futura verificación de credenciales.
 
 ## Sesiones 13 y 14: configuración validada por ambiente
 

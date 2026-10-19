@@ -8,6 +8,7 @@ import { AppModule } from '../dist/app.module.js';
 import { Student } from '../dist/students/entities/student.entity.js';
 import { Enrollment } from '../dist/enrollments/entities/enrollment.entity.js';
 import { Course } from '../dist/courses/entities/course.entity.js';
+import { User } from '../dist/users/entities/user.entity.js';
 
 export async function createTestDatabase() {
   process.loadEnvFile();
@@ -28,7 +29,7 @@ export async function createTestDatabase() {
       const source = await new DataSource({
         ...options,
         schema,
-        entities: [Course, Student, Enrollment],
+        entities: [Course, Student, Enrollment, User],
         synchronize: true,
       }).initialize();
       try {

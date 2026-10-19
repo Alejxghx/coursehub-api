@@ -10,6 +10,7 @@ import { WelcomeController } from './welcome.controller.js';
 import { WelcomeService } from './welcome.service.js';
 import { validateEnvironment } from './config/environment.js';
 import { databaseConfig } from './config/database.config.js';
+import { AuthModule } from './auth/auth.module.js';
 
 @Module({
   imports: [
@@ -21,6 +22,7 @@ import { databaseConfig } from './config/database.config.js';
     CoursesModule,
     StudentsModule,
     EnrollmentsModule,
+    AuthModule,
   ],
   controllers: [AppController, WelcomeController],
   providers: [AppService, WelcomeService],
