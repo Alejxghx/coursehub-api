@@ -36,29 +36,30 @@ export class StudentsController {
   }
 
   @Get(':id')
-  findOne(@Param('id', StudentIdPipe) id: number) {
-    return this.studentsService.findOne(id);
+  findOne(@Param('id', StudentIdPipe) id: string) {
+    // Keep the raw text until the ID pipe validates its decimal format.
+    return this.studentsService.findOne(Number(id));
   }
 
   @Patch(':id')
   update(
-    @Param('id', StudentIdPipe) id: number,
+    @Param('id', StudentIdPipe) id: string,
     @Body() input: UpdateStudentDto,
   ) {
-    return this.studentsService.update(id, input);
+    return this.studentsService.update(Number(id), input);
   }
 
   @Patch(':id/status')
   updateStatus(
-    @Param('id', StudentIdPipe) id: number,
+    @Param('id', StudentIdPipe) id: string,
     @Body() input: UpdateStudentStatusDto,
   ) {
-    return this.studentsService.updateStatus(id, input.isActive);
+    return this.studentsService.updateStatus(Number(id), input.isActive);
   }
 
   @Delete(':id')
   @HttpCode(204)
-  remove(@Param('id', StudentIdPipe) id: number) {
-    return this.studentsService.remove(id);
+  remove(@Param('id', StudentIdPipe) id: string) {
+    return this.studentsService.remove(Number(id));
   }
 }

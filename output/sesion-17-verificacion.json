@@ -1,0 +1,140 @@
+{
+  "session": 17,
+  "checkedAt": "2026-10-27T18:47:54.652Z",
+  "mode": "HTTP real y PostgreSQL en esquema temporal",
+  "cases": [
+    {
+      "case": "Registro",
+      "method": "POST",
+      "path": "/auth/register",
+      "status": 201,
+      "body": {
+        "id": 1,
+        "email": "aprendo-jwt@example.com",
+        "createdAt": "2026-10-27T18:47:55.228Z"
+      }
+    },
+    {
+      "case": "Correo duplicado",
+      "status": 409,
+      "body": {
+        "message": "El correo ya está registrado",
+        "error": "Conflict",
+        "statusCode": 409
+      }
+    },
+    {
+      "case": "Login válido",
+      "status": 200,
+      "body": {
+        "accessToken": "[OMITIDO: credencial]",
+        "user": {
+          "id": 1,
+          "email": "aprendo-jwt@example.com",
+          "createdAt": "2026-10-27T18:47:55.228Z"
+        }
+      },
+      "verifiedPayload": {
+        "sub": 1,
+        "email": "aprendo-jwt@example.com",
+        "iat": 1793126876,
+        "exp": 1793127776
+      },
+      "lifetimeSeconds": 900
+    },
+    {
+      "case": "Password incorrecta",
+      "status": 401,
+      "body": {
+        "message": "Invalid credentials",
+        "error": "Unauthorized",
+        "statusCode": 401
+      }
+    },
+    {
+      "case": "Correo inexistente",
+      "status": 401,
+      "body": {
+        "message": "Invalid credentials",
+        "error": "Unauthorized",
+        "statusCode": 401
+      }
+    },
+    {
+      "case": "DTO inválido",
+      "status": 400,
+      "body": {
+        "message": [
+          "email must be an email"
+        ],
+        "error": "Bad Request",
+        "statusCode": 400
+      }
+    },
+    {
+      "case": "Payload alterado",
+      "result": "Firma inválida; decode no basta"
+    },
+    {
+      "case": "Secreto cambiado",
+      "result": "Token anterior rechazado por firma inválida"
+    },
+    {
+      "case": "Caducidad",
+      "result": "Token de 1s rechazado en exp mediante reloj de verificación controlado"
+    },
+    {
+      "case": "JWT_SECRET ausente",
+      "result": "Configuración rechazada"
+    },
+    {
+      "case": "Reinicio de Nest y conexión",
+      "result": "Cuenta persistente; nuevo login 200; token previo válido con el mismo secreto"
+    },
+    {
+      "case": "Ruta existente",
+      "method": "GET",
+      "path": "/courses",
+      "status": 200
+    },
+    {
+      "case": "Ruta existente",
+      "method": "GET",
+      "path": "/students",
+      "status": 200
+    },
+    {
+      "case": "Ruta existente",
+      "method": "GET",
+      "path": "/enrollments",
+      "status": 200
+    }
+  ],
+  "startupWithoutSecret": {
+    "exitCode": 1,
+    "configurationRejected": true,
+    "beforeDatabaseConnection": true
+  },
+  "testSummary": {
+    "unit": 31,
+    "authAndJwtHttp": 16,
+    "postgresIntegration": 18,
+    "e2e": 1,
+    "total": 66
+  },
+  "postmanCollectionCheck": {
+    "requests": 8,
+    "assertions": 24,
+    "statuses": [
+      201,
+      200,
+      401,
+      401,
+      400,
+      200,
+      200,
+      200
+    ],
+    "runtime": "Scripts de la colección ejecutados en sandbox vm contra HTTP y PostgreSQL reales; no sesión gráfica de Postman"
+  }
+}

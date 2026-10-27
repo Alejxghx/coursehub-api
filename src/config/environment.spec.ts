@@ -1,4 +1,5 @@
 import { ConfigService } from '@nestjs/config';
+import { randomBytes } from 'node:crypto';
 import { databaseConfig } from './database.config.js';
 import { validateEnvironment } from './environment.js';
 
@@ -7,6 +8,7 @@ const local = {
   DATABASE_NAME: 'coursehub_test',
   DATABASE_USER: 'example_user',
   DATABASE_PASSWORD: 'example-password-only',
+  JWT_SECRET: randomBytes(48).toString('hex'),
 };
 
 describe('Configuración por ambientes', () => {
@@ -16,6 +18,7 @@ describe('Configuración por ambientes', () => {
       PORT: 3100,
       DATABASE_PORT: 5432,
       NODE_ENV: 'development',
+      JWT_EXPIRES_IN: '15m',
     });
   });
 
@@ -24,6 +27,7 @@ describe('Configuración por ambientes', () => {
     'DATABASE_NAME',
     'DATABASE_USER',
     'DATABASE_PASSWORD',
+    'JWT_SECRET',
   ])('rechaza la ausencia de %s', (key) => {
     const input: Record<string, unknown> = { ...local };
     delete input[key];
@@ -35,6 +39,13 @@ describe('Configuración por ambientes', () => {
     { PORT: 65536 },
     { PORT: 0 },
     { NODE_ENV: 'staging' },
+    { JWT_SECRET: 'short' },
+    { JWT_SECRET: ' '.repeat(40) },
+    { JWT_SECRET: 'replace-with-a-long-random-local-secret' },
+    { JWT_EXPIRES_IN: '900' },
+    { JWT_EXPIRES_IN: '0s' },
+    { JWT_EXPIRES_IN: '-1m' },
+    { JWT_EXPIRES_IN: 'never' },
   ])('rechaza configuración inválida: %o', (invalid) => {
     expect(() => validateEnvironment({ ...local, ...invalid })).toThrow(
       'Configuración inválida',
@@ -57,6 +68,16 @@ describe('Configuración por ambientes', () => {
         .DATABASE_PASSWORD,
     ).toBe('');
   });
+
+  it.each(['1s', '15m', '2h', '1d'])(
+    'acepta expiración con unidad %s',
+    (expiry) => {
+      expect(
+        validateEnvironment({ ...local, JWT_EXPIRES_IN: expiry })
+          .JWT_EXPIRES_IN,
+      ).toBe(expiry);
+    },
+  );
 
   it('no incluye valores rechazados ni contraseñas en el error', () => {
     const secret = 'private-value-do-not-log';

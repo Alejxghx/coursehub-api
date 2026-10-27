@@ -1,7 +1,7 @@
 {
   "info": {
     "name": "CourseHub — Sesión 15: registro de usuarios",
-    "description": "Ejecutar en orden. Usa contraseñas ficticias. El registro válido permanece en la base local; la colección no imprime hashes.",
+    "description": "Ejecutar en orden. Define practicePassword en el valor local privado de un entorno de Postman: usa una contraseña ficticia de 8–72 caracteres y hasta 72 bytes. La colección compartida no guarda su valor. No exportes el entorno con contraseñas. El registro válido permanece en la base local; no se imprimen hashes.",
     "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
   },
   "variable": [
@@ -23,7 +23,7 @@
         ],
         "body": {
           "mode": "raw",
-          "raw": "{\n  \"email\": \"{{registrationEmail}}\",\n  \"password\": \"aprendo-nest-2026\"\n}"
+          "raw": "{\n  \"email\": \"{{registrationEmail}}\",\n  \"password\": {{practicePasswordJson}}\n}"
         },
         "url": "{{baseUrl}}/auth/register"
       },
@@ -62,7 +62,7 @@
         ],
         "body": {
           "mode": "raw",
-          "raw": "{\n  \"email\": \"{{uppercaseEmail}}\",\n  \"password\": \"otra-clave-practica\"\n}"
+          "raw": "{\n  \"email\": \"{{uppercaseEmail}}\",\n  \"password\": {{practicePasswordJson}}\n}"
         },
         "url": "{{baseUrl}}/auth/register"
       },
@@ -100,7 +100,7 @@
         ],
         "body": {
           "mode": "raw",
-          "raw": "{\n  \"password\": \"aprendo-nest-2026\"\n}"
+          "raw": "{\n  \"password\": {{practicePasswordJson}}\n}"
         },
         "url": "{{baseUrl}}/auth/register"
       },
@@ -158,7 +158,7 @@
         ],
         "body": {
           "mode": "raw",
-          "raw": "{\n  \"email\": \"no-es-correo\",\n  \"password\": \"aprendo-nest-2026\"\n}"
+          "raw": "{\n  \"email\": \"no-es-correo\",\n  \"password\": {{practicePasswordJson}}\n}"
         },
         "url": "{{baseUrl}}/auth/register"
       },
@@ -187,7 +187,7 @@
         ],
         "body": {
           "mode": "raw",
-          "raw": "{\n  \"email\": \"{{registrationEmail}}\",\n  \"password\": \"1234567\"\n}"
+          "raw": "{\n  \"email\": \"{{registrationEmail}}\",\n  \"password\": {{shortPasswordJson}}\n}"
         },
         "url": "{{baseUrl}}/auth/register"
       },
@@ -203,6 +203,20 @@
           }
         }
       ]
+    }
+  ],
+  "event": [
+    {
+      "listen": "prerequest",
+      "script": {
+        "type": "text/javascript",
+        "exec": [
+          "const password = pm.variables.get('practicePassword');",
+          "if (typeof password !== 'string' || !password) { throw new Error('Define practicePassword en el valor local privado de un entorno de Postman. Usa solo una contraseña ficticia.'); }",
+          "pm.variables.set('practicePasswordJson', JSON.stringify(password));",
+          "pm.variables.set('shortPasswordJson', JSON.stringify(pm.variables.replaceIn('{{$guid}}').slice(0, 7)));"
+        ]
+      }
     }
   ]
 }

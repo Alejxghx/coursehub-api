@@ -5,6 +5,15 @@ export const environmentSchema = Joi.object({
     .valid('development', 'test', 'production')
     .default('development'),
   PORT: Joi.number().port().min(1).default(3000),
+  JWT_SECRET: Joi.string()
+    .min(32)
+    .pattern(/\S/)
+    .invalid('replace-with-a-long-random-local-secret')
+    .required(),
+  // Require an explicit unit: a bare string such as "900" means milliseconds.
+  JWT_EXPIRES_IN: Joi.string()
+    .pattern(/^[1-9]\d{0,5}[smhd]$/)
+    .default('15m'),
   DATABASE_HOST: Joi.string().trim().required(),
   DATABASE_PORT: Joi.number().port().min(1).default(5432),
   DATABASE_NAME: Joi.string().trim().required(),

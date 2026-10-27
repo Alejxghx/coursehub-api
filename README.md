@@ -1,4 +1,4 @@
-# CourseHub API — Sesiones 9 a 15
+# CourseHub API — Sesiones 9 a 17
 
 Cursos, estudiantes y matrículas persistentes en PostgreSQL con NestJS y TypeORM.
 
@@ -26,11 +26,149 @@ La base indicada en `DATABASE_NAME` debe existir. Variables: `DATABASE_HOST`,
 En `test` y `production` es `false`: el esquema debe existir previamente. Esta
 entrega no implementa ni ejecuta migraciones. No se precargan datos de ejemplo en la API.
 
+## Sesión 17: emisión de tokens JWT
+
+El login actual devuelve `{ accessToken, user }` con estado `200` después de
+comprobar bcrypt. `user` contiene solo `id`, `email` y `createdAt`; el payload
+firmado contiene `sub`, `email`, `iat` y `exp`. La duración por defecto es
+`15m` (900 segundos) y el algoritmo de firma es HS256.
+
+Configura `JWT_SECRET` con un valor aleatorio local de al menos 32 caracteres
+y `JWT_EXPIRES_IN=15m` en `.env`. El marcador de `.env.example` se rechaza
+deliberadamente. El secreto real está excluido de Git. No publiques tokens
+completos, contraseñas ni hashes. Un JWT está firmado y su payload puede leerse.
+
+La respuesta de sesión 16 que se documenta más abajo es histórica: sus campos
+ahora están dentro de `user`. Usa la [colección de sesión 17](postman/sesion-17.postman_collection.json)
+para verificar el contrato vigente. Las rutas todavía no tienen guards ni roles;
+la protección de Bearer corresponde a la sesión 18.
+
+- [Guía de cambios y explicación paso a paso](docs/sesion-17.md).
+- [PDF para aprender la implementación](output/pdf/CoursehubAPI-Sesion-17.pdf).
+- [Resultados reales sin credenciales](output/sesion-17-verificacion.json).
+
+`npm run test:jwt` comprueba módulo, firma, payload, errores y caducidad sin
+necesitar PostgreSQL. Con tu base configurada, `npm run verify:session17` genera
+evidencia HTTP real en un esquema temporal. La entrega se comprobó con 66 pruebas
+y 14 comprobaciones de evidencia, incluido reinicio de Nest y PostgreSQL temporal.
+
+## Sesión 16: inicio de sesión y entrega de Semana 8
+
+`POST /auth/login` comprueba credenciales contra el hash persistido mediante
+`bcrypt.compare`. `LoginDto` valida email y password antes de llegar al servicio;
+normaliza únicamente el correo. Conserva los espacios y mayúsculas de la contraseña
+y exige entre 8 y 72 caracteres y un máximo de 72 bytes UTF-8, igual que el registro.
+
+```http
+POST /auth/login
+Content-Type: application/json
+
+{
+  "email": "ana@example.com",
+  "password": {{practicePasswordJson}}
+}
+```
+
+El cuerpo mostrado es una plantilla de Postman. El script previo convierte la
+variable privada `practicePassword` a `practicePasswordJson` mediante `JSON.stringify`,
+para conservar comillas, barras y espacios. Usa la misma cuenta y clave de práctica
+creadas con el registro. Un login correcto devuelve `200` con únicamente `id`, `email` y
+`createdAt`, los mismos datos seguros del registro. La operación no crea cuentas,
+no modifica contraseñas y no devuelve un token.
+
+`UsersService.findByEmailWithPassword` utiliza una consulta parametrizada y
+`addSelect('user.passwordHash')` para recuperar el hash exclusivamente en login.
+Las consultas ordinarias mantienen `select: false`. La comparación pertenece a
+`AuthService`; el controlador solo recibe el DTO y fija el estado HTTP.
+
+Una contraseña incorrecta y un correo válido que no esté registrado devuelven
+exactamente el mismo cuerpo con estado `401`:
+
+```json
+{
+  "statusCode": 401,
+  "message": "Invalid credentials",
+  "error": "Unauthorized"
+}
+```
+
+El mensaje genérico evita revelar públicamente cuál de las credenciales falló.
+Un correo mal formado, una contraseña corta o ausente y propiedades desconocidas
+devuelven `400` antes de consultar la base. Registro conserva `201` para cuentas
+nuevas y `409` para correos duplicados. Cursos, estudiantes y matrículas mantienen
+sus rutas disponibles; JWT, guards y roles quedan para las siguientes semanas.
+
+### Postman y demostración de hasta ocho minutos
+
+Importa [la colección de sesión 16](postman/sesion-16.postman_collection.json).
+Configura `baseUrl` y define `practicePassword` en el valor local privado de un
+entorno de Postman; utiliza una contraseña ficticia que cumpla la validación.
+La colección compartida contiene la referencia a esa variable, sin guardar su
+valor. No exportes el entorno con contraseñas. Ejecuta las 14 solicitudes en orden:
+se generan correos nuevos y se crean dos cuentas de práctica por ejecución.
+Los registros permanecen en tu base local.
+
+Antes de presentar, configura `.env`, inicia PostgreSQL y la API, importa la colección
+y prepara el entorno privado de Postman. Los cuerpos compartidos muestran variables;
+evita abrir sus valores privados, el cuerpo HTTP resuelto o la consola de solicitudes
+durante una captura. Las contraseñas cortas de los casos inválidos se generan solo
+durante la ejecución, sin guardar un valor fijo en la colección.
+
+1. **0:00–1:00.** Registra la primera cuenta y muestra `201`, correo normalizado y respuesta sin hash.
+2. **1:00–2:00.** Inspecciona localmente la tabla `users` y su columna `password_hash`. No copies
+   contraseñas ni hashes a las capturas o documentos públicos. Para una captura
+   segura puedes mostrar solamente indicadores:
+
+   ```sql
+   SELECT id, email, created_at,
+          password_hash IS NOT NULL AS tiene_hash,
+          password_hash LIKE '$2%' AS formato_bcrypt
+   FROM users;
+   ```
+
+3. **2:00–3:00.** Registra la segunda cuenta y repite el correo de la primera en mayúsculas: `409`.
+4. **3:00–4:00.** Inicia sesión correctamente: `200`, misma identidad y únicamente datos seguros.
+5. **4:00–5:30.** Prueba contraseña incorrecta y correo inexistente: ambos `401`, con cuerpos idénticos.
+6. **5:30–6:30.** Envía un correo inválido y una contraseña corta: `400`. La prueba automatizada
+   verifica además que esos cuerpos no consultan el repositorio.
+7. **6:30–8:00.** Muestra el login de la segunda cuenta y los tres listados existentes con `200`.
+
+Las solicitudes de la colección incluyen aserciones de estado, identidad,
+respuestas seguras y equivalencia de los dos errores `401`. Para evidenciar la
+persistencia, reinicia la API después de registrar y repite el login correcto.
+Las pruebas automatizadas también cierran y reabren Nest y su conexión antes del login.
+
+La [evidencia de ejecución de Semana 8](output/semana-08-evidencias.md) registra
+las respuestas verificadas contra PostgreSQL temporal y un reinicio real del
+proceso de la API. Omite contraseñas y hashes. Este registro automatizado sirve
+de comprobación previa; la presentación personal en Postman sigue el guion anterior.
+
+### Verificación y conceptos de la sesión
+
+`npm run test:auth` compila y ejecuta diez pruebas de registro y login con bcrypt
+real y un repositorio simulado, sin necesitar PostgreSQL. Incluye la matriz de
+login, normalización, contraseñas con espacios, límite de bytes, respuestas
+seguras y rechazo de DTO inválido sin consultar el repositorio.
+
+Con `.env` y PostgreSQL configurados, `npm run test:auth:persistence` comprueba el
+flujo contra una base real en un esquema temporal: persistencia tras reiniciar,
+hash excluido de consultas normales, selección explícita para login, unicidad
+de email y registros concurrentes. También forma parte de `npm run test:integration`,
+que verifica las rutas de cursos, estudiantes y matrículas. No muestra hashes ni
+contraseñas. Los esquemas temporales se eliminan al terminar las pruebas.
+
+Autenticación comprueba quién es la persona mediante sus credenciales. Una sesión
+permitirá demostrarlo en peticiones posteriores; la autorización decidirá qué
+acciones puede realizar. Esta entrega implementa la primera comprobación.
+La contraseña no se descifra: bcrypt verifica una coincidencia usando el texto
+recibido y el hash que contiene la sal y el costo. No se compara un hash nuevo
+con `===`, porque distintas sales producen hashes distintos. El `401` expresa un
+fallo de autenticación sin revelar si existe la cuenta; `404` revelaría esa distinción.
 
 ## Sesión 15: registro de usuarios
 
 `User` representa una cuenta de acceso independiente de `Student`. Se añadieron
-`UsersModule` (entidad y repositorio) y `AuthModule` (registro HTTP y hash).
+`UsersModule` (entidad y repositorio) y `AuthModule` (registro, login y bcrypt).
 
 ```http
 POST /auth/register
@@ -38,7 +176,7 @@ Content-Type: application/json
 
 {
   "email": "ana@example.com",
-  "password": "aprendo-nest-2026"
+  "password": {{practicePasswordJson}}
 }
 ```
 
@@ -58,8 +196,10 @@ Con tu `.env` local configurado, ejecuta `npm ci` y `npm run start:dev` en
 `NODE_ENV=development`: TypeORM creará la tabla `users`. En producción el esquema
 debe prepararse mediante la estrategia de migraciones correspondiente.
 
-Importa [la colección de sesión 15](postman/sesion-15.postman_collection.json) y
-ejecútala en orden. Incluye registro válido, duplicado con mayúsculas, ausencia de
+Importa [la colección de sesión 15](postman/sesion-15.postman_collection.json),
+define `practicePassword` en el valor local privado de un entorno de Postman y
+ejecútala en orden. Sus scripts preparan `practicePasswordJson` para los cuerpos
+de registro; no guardes el valor de la contraseña en la colección compartida. Incluye registro válido, duplicado con mayúsculas, ausencia de
 email, ausencia de password, correo inválido y contraseña corta. Los casos `400`
 y `409` no deben crear filas; el registro válido queda en la base local.
 
@@ -201,6 +341,8 @@ limitado a 50; los parámetros inválidos o desconocidos devuelven `400`.
 
 | Método | Ruta | Respuesta |
 |---|---|---|
+| POST | /auth/register | 201, usuario seguro |
+| POST | /auth/login | 200, usuario seguro; 401, credenciales incorrectas |
 | POST | /courses | 201 |
 | GET | /courses?level=beginner&page=1&limit=10&sortBy=id&order=ASC | 200 `{ items, meta }` |
 | GET / PATCH | /courses/:id | 200 |
@@ -257,6 +399,7 @@ filtros combinados y 409 al repetir el correo. Cambiar isActive a false y elimin
 
 ```powershell
 npm run test:integration
+npm run test:auth
 npm test
 npm run lint
 npm run test:e2e
@@ -287,13 +430,31 @@ visual de entrega realiza además el reinicio real de terminal descrito arriba.
 
 - [Sesión 9: estudiantes persistentes](https://epanchanaf.github.io/nestjs-course/semana-05/sesion-09)
 - [Sesión 10: relaciones persistentes](https://epanchanaf.github.io/nestjs-course/semana-05/sesion-10)
+- [Sesión 16: comprobar credenciales](https://epanchanaf.github.io/nestjs-course/semana-08/sesion-16)
+- [Proyecto integrador de Semana 8](https://epanchanaf.github.io/nestjs-course/semana-08/proyecto-integrador)
 - [Práctica previa de semana 3](SEMANA-3.md)
 
-## Verificación realizada — 5 de octubre de 2026
+## Verificación realizada — 20 de octubre de 2026
 
-Compilación y lint correctos. Pasaron 17 pruebas HTTP de integración (incluida
-persistencia y concurrencia), 3 unitarias y 1 e2e: 21 pruebas, 0 fallidas.
-También se reprodujeron las 12 solicitudes de la colección de entrega contra una
-aplicación aislada, comprobando sus variables, cuerpos y aserciones de respuesta.
+Compilación y lint correctos. Pasaron 19 pruebas unitarias, 10 de autenticación
+HTTP con repositorio simulado, 18 de integración HTTP con PostgreSQL 16 (incluida
+persistencia y concurrencia) y 1 e2e: 48 pruebas, 0 fallidas. Se utilizó una base
+temporal aislada, sin modificar la configuración local de la aplicación.
+
+La verificación detectó y corrigió un problema previo de identificadores en
+estudiantes y matrículas: la transformación global convertía `1e2` a `100` antes
+de que el pipe validara el texto. Ahora esos identificadores conservan el rechazo
+con `400`, y las pruebas de estudiantes usan la misma transformación global que la API.
+
+También se reprodujeron programáticamente las 14 solicitudes y las 37 aserciones
+de la colección de sesión 16 contra una aplicación aislada con PostgreSQL real,
+comprobando sus variables, cuerpos y respuestas. Se incluyó una contraseña
+ficticia con espacios, comillas y barra inversa para verificar su codificación JSON.
 La reproducción automatizada no sustituye las capturas de Postman y del reinicio
 manual que se soliciten para subir la tarea.
+
+Después de retirar las contraseñas fijas del README y de ambas colecciones, se
+verificaron nuevamente las 20 solicitudes de sesiones 15 y 16 con sus 50 aserciones.
+Un login adicional tras detener e iniciar un nuevo proceso de la API confirmó
+la persistencia: 21 solicitudes correctas. La ejecución duró 2,6 segundos y sus
+respuestas seguras están en [la evidencia de Semana 8](output/semana-08-evidencias.md).

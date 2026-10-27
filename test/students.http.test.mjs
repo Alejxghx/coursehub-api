@@ -20,7 +20,11 @@ describe('API de estudiantes (HTTP con aplicación compilada)', () => {
   beforeEach(async () => {
     app = await createTestApp();
     app.useGlobalPipes(
-      new ValidationPipe({ whitelist: true, forbidNonWhitelisted: true }),
+      new ValidationPipe({
+        whitelist: true,
+        forbidNonWhitelisted: true,
+        transform: true,
+      }),
     );
     await app.init();
     api = request(app.getHttpServer());

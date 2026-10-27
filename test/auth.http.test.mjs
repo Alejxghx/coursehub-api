@@ -6,6 +6,8 @@ import { Test } from '@nestjs/testing';
 import { getRepositoryToken } from '@nestjs/typeorm';
 import { getMetadataArgsStorage, QueryFailedError } from 'typeorm';
 import * as bcrypt from 'bcrypt';
+import { randomBytes } from 'node:crypto';
+import { JwtService } from '@nestjs/jwt';
 import request from 'supertest';
 import { AuthController } from '../dist/auth/auth.controller.js';
 import { AuthService } from '../dist/auth/auth.service.js';
@@ -14,15 +16,39 @@ import { User } from '../dist/users/entities/user.entity.js';
 
 // A repository double isolates HTTP, validation and hashing from PostgreSQL.
 // Database constraints themselves still require an integration run on PostgreSQL.
-describe('Sesión 15: registro HTTP', () => {
+describe('Sesiones 15 y 16: registro e inicio de sesión HTTP', () => {
   let app;
   const rows = [];
+  let queries = 0;
   const repository = {
     async findOneBy({ email }) {
+      queries++;
       const row = rows.find((item) => item.email === email);
       if (!row) return null;
       const { passwordHash: _hash, ...safe } = row;
       return safe;
+    },
+    createQueryBuilder() {
+      let email;
+      let includePassword = false;
+      return {
+        addSelect(selection) {
+          includePassword = selection === 'user.passwordHash';
+          return this;
+        },
+        where(_condition, parameters) {
+          email = parameters.email;
+          return this;
+        },
+        async getOne() {
+          queries++;
+          const row = rows.find((item) => item.email === email);
+          if (!row) return null;
+          if (includePassword) return { ...row };
+          const { passwordHash: _hash, ...safe } = row;
+          return safe;
+        },
+      };
     },
     create(value) {
       return { ...value };
@@ -47,6 +73,13 @@ describe('Sesión 15: registro HTTP', () => {
       providers: [
         AuthService,
         UsersService,
+        {
+          provide: JwtService,
+          useValue: new JwtService({
+            secret: randomBytes(48).toString('hex'),
+            signOptions: { expiresIn: '15m', algorithm: 'HS256' },
+          }),
+        },
         { provide: getRepositoryToken(User), useValue: repository },
       ],
     }).compile();
@@ -115,6 +148,7 @@ describe('Sesión 15: registro HTTP', () => {
       },
     ];
     const count = rows.length;
+    const queriesBefore = queries;
     for (const input of cases) {
       const response = await request(app.getHttpServer())
         .post('/auth/register')
@@ -125,6 +159,7 @@ describe('Sesión 15: registro HTTP', () => {
       }
     }
     assert.equal(rows.length, count);
+    assert.equal(queries, queriesBefore);
   });
 
   it('acepta exactamente 72 bytes y conserva una sal distinta por usuario', async () => {
@@ -173,5 +208,96 @@ describe('Sesión 15: registro HTTP', () => {
       service.create(' RACE@EXAMPLE.COM ', 'test-hash'),
       (error) => error.getStatus() === 409,
     );
+  });
+
+  it('login normaliza correo y devuelve 200 con los mismos datos seguros del registro', async () => {
+    const count = rows.length;
+    const response = await request(app.getHttpServer())
+      .post('/auth/login')
+      .send({ email: ' ANA@EXAMPLE.COM ', password: '  Aprendo-nest-2026  ' })
+      .expect(200);
+    assert.deepEqual(response.body.user, {
+      id: rows[0].id,
+      email: rows[0].email,
+      createdAt: rows[0].createdAt.toISOString(),
+    });
+    assert.equal(typeof response.body.accessToken, 'string');
+    assert.equal(rows.length, count);
+  });
+
+  it('contraseña incorrecta y correo inexistente devuelven el mismo 401 genérico', async () => {
+    const count = rows.length;
+    const responses = [];
+    for (const credentials of [
+      { email: 'ana@example.com', password: 'another-test-password' },
+      { email: 'missing@example.com', password: 'another-test-password' },
+      { email: 'ana@example.com', password: 'Aprendo-nest-2026' },
+      { email: 'ana@example.com', password: '  aprendo-nest-2026  ' },
+    ]) {
+      const response = await request(app.getHttpServer())
+        .post('/auth/login')
+        .send(credentials)
+        .expect(401);
+      responses.push(response.body);
+    }
+    const expected = {
+      statusCode: 401,
+      message: 'Invalid credentials',
+      error: 'Unauthorized',
+    };
+    for (const response of responses) assert.deepEqual(response, expected);
+    assert.equal(rows.length, count);
+  });
+
+  it('login rechaza DTO inválido con 400 antes de consultar el repositorio', async () => {
+    const count = rows.length;
+    const queriesBefore = queries;
+    const cases = [
+      {},
+      { email: 'ana-at-example.com', password: 'example-password' },
+      { email: 'ana@example.com', password: '1234567' },
+      { email: 'ana@example.com' },
+      { password: 'example-password' },
+      { email: 'ana@example.com', password: 'a'.repeat(73) },
+      { email: 'ana@example.com', password: '🙂'.repeat(19) },
+      { email: ['ana@example.com'], password: 'example-password' },
+      { email: null, password: 'example-password' },
+      { email: 'ana@example.com', password: null },
+      { email: 'ana@example.com', password: 12345678 },
+      { email: 'ana@example.com', password: ['example-password'] },
+      {
+        email: 'ana@example.com',
+        password: 'example-password',
+        passwordHash: 'injected',
+      },
+    ];
+    for (const input of cases) {
+      const response = await request(app.getHttpServer())
+        .post('/auth/login')
+        .send(input)
+        .expect(400);
+      if (typeof input.password === 'string') {
+        assert.ok(!JSON.stringify(response.body).includes(input.password));
+      }
+      assert.ok(!Object.hasOwn(response.body, 'passwordHash'));
+    }
+    assert.equal(queries, queriesBefore);
+    assert.equal(rows.length, count);
+  });
+
+  it('login verifica hashes con sales distintas y contraseñas de exactamente 72 bytes', async () => {
+    for (const email of ['salt-one@example.com', 'salt-two@example.com']) {
+      const response = await request(app.getHttpServer())
+        .post('/auth/login')
+        .send({ email, password: 'a'.repeat(72) })
+        .expect(200);
+      assert.equal(response.body.user.email, email);
+      assert.equal(typeof response.body.accessToken, 'string');
+      assert.deepEqual(Object.keys(response.body.user).sort(), [
+        'createdAt',
+        'email',
+        'id',
+      ]);
+    }
   });
 });

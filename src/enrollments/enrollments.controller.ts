@@ -28,18 +28,19 @@ export class EnrollmentsController {
   }
 
   @Get('students/:studentId/enrollments')
-  findByStudent(@Param('studentId', EnrollmentIdPipe) studentId: number) {
-    return this.enrollmentsService.findByStudent(studentId);
+  findByStudent(@Param('studentId', EnrollmentIdPipe) studentId: string) {
+    // Keep the raw text until the ID pipe validates its decimal format.
+    return this.enrollmentsService.findByStudent(Number(studentId));
   }
 
   @Get('courses/:courseId/enrollments')
-  findByCourse(@Param('courseId', EnrollmentIdPipe) courseId: number) {
-    return this.enrollmentsService.findByCourse(courseId);
+  findByCourse(@Param('courseId', EnrollmentIdPipe) courseId: string) {
+    return this.enrollmentsService.findByCourse(Number(courseId));
   }
 
   @Delete('enrollments/:id')
   @HttpCode(204)
-  remove(@Param('id', EnrollmentIdPipe) id: number) {
-    return this.enrollmentsService.remove(id);
+  remove(@Param('id', EnrollmentIdPipe) id: string) {
+    return this.enrollmentsService.remove(Number(id));
   }
 }

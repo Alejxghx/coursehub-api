@@ -1,0 +1,452 @@
+{
+  "info": {
+    "name": "CourseHub — Sesión 16: registro y login",
+    "description": "Ejecutar en orden con la API y PostgreSQL locales. Define practicePassword en el valor local privado de un entorno de Postman (solo una contraseña ficticia de 8–72 caracteres y hasta 72 bytes). No exportes contraseñas ni hashes. Se crean dos cuentas de práctica con correos nuevos por ejecución. No se generan tokens.",
+    "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
+  },
+  "variable": [
+    {
+      "key": "baseUrl",
+      "value": "http://localhost:3000"
+    }
+  ],
+  "event": [
+    {
+      "listen": "prerequest",
+      "script": {
+        "type": "text/javascript",
+        "exec": [
+          "const password = pm.variables.get('practicePassword');",
+          "if (typeof password !== 'string' || !password) { throw new Error('Define practicePassword en el valor local privado de un entorno de Postman. Usa solo una contraseña ficticia.'); }",
+          "pm.variables.set('practicePasswordJson', JSON.stringify(password));",
+          "pm.variables.set('shortPasswordJson', JSON.stringify(pm.variables.replaceIn('{{$guid}}').slice(0, 7)));"
+        ]
+      }
+    },
+    {
+      "listen": "test",
+      "script": {
+        "type": "text/javascript",
+        "exec": [
+          "pm.test('Sin contraseñas, hashes ni tokens en la respuesta', () => { const body = pm.response.json(); const forbidden = ['password', 'passwordHash', 'password_hash', 'token', 'access_token', 'accessToken']; const inspect = value => { if (value && typeof value === 'object') { Object.keys(value).forEach(key => { pm.expect(forbidden).not.to.include(key); inspect(value[key]); }); } }; inspect(body); });"
+        ]
+      }
+    }
+  ],
+  "item": [
+    {
+      "name": "01 — Registrar primera cuenta: 201",
+      "request": {
+        "method": "POST",
+        "header": [
+          {
+            "key": "Content-Type",
+            "value": "application/json"
+          }
+        ],
+        "url": "{{baseUrl}}/auth/register",
+        "body": {
+          "mode": "raw",
+          "raw": "{\n  \"email\": \"{{registrationEmail}}\",\n  \"password\": {{practicePasswordJson}}\n}"
+        }
+      },
+      "event": [
+        {
+          "listen": "prerequest",
+          "script": {
+            "type": "text/javascript",
+            "exec": [
+              "const runId = pm.variables.replaceIn('{{$guid}}');",
+              "pm.collectionVariables.set('registrationEmail', 'sesion16-' + runId + '@example.com');",
+              "pm.collectionVariables.set('secondEmail', 'sesion16-second-' + runId + '@example.com');",
+              "pm.collectionVariables.set('missingEmail', 'sesion16-missing-' + runId + '@example.com');",
+              "pm.collectionVariables.set('uppercaseEmail', pm.collectionVariables.get('registrationEmail').toUpperCase());"
+            ]
+          }
+        },
+        {
+          "listen": "test",
+          "script": {
+            "type": "text/javascript",
+            "exec": [
+              "pm.test('HTTP 201', () => pm.response.to.have.status(201));",
+              "pm.test('Solo datos seguros del usuario', () => pm.expect(Object.keys(pm.response.json()).sort()).to.eql(['createdAt', 'email', 'id']));",
+              "pm.test('Correo normalizado', () => pm.expect(pm.response.json().email).to.eql(pm.collectionVariables.get('registrationEmail')));",
+              "pm.collectionVariables.set('registeredUser', JSON.stringify(pm.response.json()));"
+            ]
+          }
+        }
+      ]
+    },
+    {
+      "name": "02 — Registrar segunda cuenta de práctica: 201",
+      "request": {
+        "method": "POST",
+        "header": [
+          {
+            "key": "Content-Type",
+            "value": "application/json"
+          }
+        ],
+        "url": "{{baseUrl}}/auth/register",
+        "body": {
+          "mode": "raw",
+          "raw": "{\n  \"email\": \"{{secondEmail}}\",\n  \"password\": {{practicePasswordJson}}\n}"
+        }
+      },
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "type": "text/javascript",
+            "exec": [
+              "pm.test('HTTP 201', () => pm.response.to.have.status(201));",
+              "pm.test('Solo datos seguros del usuario', () => pm.expect(Object.keys(pm.response.json()).sort()).to.eql(['createdAt', 'email', 'id']));",
+              "pm.collectionVariables.set('secondUser', JSON.stringify(pm.response.json()));"
+            ]
+          }
+        }
+      ]
+    },
+    {
+      "name": "03 — Registro duplicado con mayúsculas: 409",
+      "request": {
+        "method": "POST",
+        "header": [
+          {
+            "key": "Content-Type",
+            "value": "application/json"
+          }
+        ],
+        "url": "{{baseUrl}}/auth/register",
+        "body": {
+          "mode": "raw",
+          "raw": "{\n  \"email\": \"{{uppercaseEmail}}\",\n  \"password\": {{practicePasswordJson}}\n}"
+        }
+      },
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "type": "text/javascript",
+            "exec": [
+              "pm.test('HTTP 409', () => pm.response.to.have.status(409));"
+            ]
+          }
+        }
+      ]
+    },
+    {
+      "name": "04 — Login correcto con correo normalizado: 200",
+      "request": {
+        "method": "POST",
+        "header": [
+          {
+            "key": "Content-Type",
+            "value": "application/json"
+          }
+        ],
+        "url": "{{baseUrl}}/auth/login",
+        "body": {
+          "mode": "raw",
+          "raw": "{\n  \"email\": \" {{uppercaseEmail}} \",\n  \"password\": {{practicePasswordJson}}\n}"
+        }
+      },
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "type": "text/javascript",
+            "exec": [
+              "pm.test('HTTP 200', () => pm.response.to.have.status(200));",
+              "pm.test('Solo datos seguros del usuario', () => pm.expect(Object.keys(pm.response.json()).sort()).to.eql(['createdAt', 'email', 'id']));",
+              "pm.test('Misma cuenta que en el registro', () => pm.expect(pm.response.json()).to.eql(JSON.parse(pm.collectionVariables.get('registeredUser'))));"
+            ]
+          }
+        }
+      ]
+    },
+    {
+      "name": "05 — Contraseña incorrecta: 401",
+      "request": {
+        "method": "POST",
+        "header": [
+          {
+            "key": "Content-Type",
+            "value": "application/json"
+          }
+        ],
+        "url": "{{baseUrl}}/auth/login",
+        "body": {
+          "mode": "raw",
+          "raw": "{\n  \"email\": \"{{registrationEmail}}\",\n  \"password\": \"{{wrongPassword}}\"\n}"
+        }
+      },
+      "event": [
+        {
+          "listen": "prerequest",
+          "script": {
+            "type": "text/javascript",
+            "exec": [
+              "pm.variables.set('wrongPassword', 'incorrecta-' + pm.variables.replaceIn('{{$guid}}'));"
+            ]
+          }
+        },
+        {
+          "listen": "test",
+          "script": {
+            "type": "text/javascript",
+            "exec": [
+              "pm.test('HTTP 401', () => pm.response.to.have.status(401));",
+              "pm.test('Error genérico', () => pm.expect(pm.response.json()).to.eql({ statusCode: 401, message: 'Invalid credentials', error: 'Unauthorized' }));",
+              "pm.collectionVariables.set('failedLoginResponse', JSON.stringify(pm.response.json()));"
+            ]
+          }
+        }
+      ]
+    },
+    {
+      "name": "06 — Correo inexistente: el mismo 401",
+      "request": {
+        "method": "POST",
+        "header": [
+          {
+            "key": "Content-Type",
+            "value": "application/json"
+          }
+        ],
+        "url": "{{baseUrl}}/auth/login",
+        "body": {
+          "mode": "raw",
+          "raw": "{\n  \"email\": \"{{missingEmail}}\",\n  \"password\": {{practicePasswordJson}}\n}"
+        }
+      },
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "type": "text/javascript",
+            "exec": [
+              "pm.test('HTTP 401', () => pm.response.to.have.status(401));",
+              "pm.test('Respuesta idéntica a contraseña incorrecta', () => pm.expect(pm.response.json()).to.eql(JSON.parse(pm.collectionVariables.get('failedLoginResponse'))));"
+            ]
+          }
+        }
+      ]
+    },
+    {
+      "name": "07 — Login con correo mal formado: 400",
+      "request": {
+        "method": "POST",
+        "header": [
+          {
+            "key": "Content-Type",
+            "value": "application/json"
+          }
+        ],
+        "url": "{{baseUrl}}/auth/login",
+        "body": {
+          "mode": "raw",
+          "raw": "{\n  \"email\": \"ana-at-example.com\",\n  \"password\": {{practicePasswordJson}}\n}"
+        }
+      },
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "type": "text/javascript",
+            "exec": [
+              "pm.test('HTTP 400', () => pm.response.to.have.status(400));"
+            ]
+          }
+        }
+      ]
+    },
+    {
+      "name": "08 — Login con contraseña corta: 400",
+      "request": {
+        "method": "POST",
+        "header": [
+          {
+            "key": "Content-Type",
+            "value": "application/json"
+          }
+        ],
+        "url": "{{baseUrl}}/auth/login",
+        "body": {
+          "mode": "raw",
+          "raw": "{\n  \"email\": \"{{registrationEmail}}\",\n  \"password\": {{shortPasswordJson}}\n}"
+        }
+      },
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "type": "text/javascript",
+            "exec": [
+              "pm.test('HTTP 400', () => pm.response.to.have.status(400));"
+            ]
+          }
+        }
+      ]
+    },
+    {
+      "name": "09 — Login sin contraseña: 400",
+      "request": {
+        "method": "POST",
+        "header": [
+          {
+            "key": "Content-Type",
+            "value": "application/json"
+          }
+        ],
+        "url": "{{baseUrl}}/auth/login",
+        "body": {
+          "mode": "raw",
+          "raw": "{\n  \"email\": \"{{registrationEmail}}\"\n}"
+        }
+      },
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "type": "text/javascript",
+            "exec": [
+              "pm.test('HTTP 400', () => pm.response.to.have.status(400));"
+            ]
+          }
+        }
+      ]
+    },
+    {
+      "name": "10 — Registro con cuerpo inválido: 400",
+      "request": {
+        "method": "POST",
+        "header": [
+          {
+            "key": "Content-Type",
+            "value": "application/json"
+          }
+        ],
+        "url": "{{baseUrl}}/auth/register",
+        "body": {
+          "mode": "raw",
+          "raw": "{\n  \"email\": \"no-es-correo\",\n  \"password\": {{practicePasswordJson}}\n}"
+        }
+      },
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "type": "text/javascript",
+            "exec": [
+              "pm.test('HTTP 400', () => pm.response.to.have.status(400));"
+            ]
+          }
+        }
+      ]
+    },
+    {
+      "name": "11 — Login de la segunda cuenta: 200",
+      "request": {
+        "method": "POST",
+        "header": [
+          {
+            "key": "Content-Type",
+            "value": "application/json"
+          }
+        ],
+        "url": "{{baseUrl}}/auth/login",
+        "body": {
+          "mode": "raw",
+          "raw": "{\n  \"email\": \"{{secondEmail}}\",\n  \"password\": {{practicePasswordJson}}\n}"
+        }
+      },
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "type": "text/javascript",
+            "exec": [
+              "pm.test('HTTP 200', () => pm.response.to.have.status(200));",
+              "pm.test('Solo datos seguros del usuario', () => pm.expect(Object.keys(pm.response.json()).sort()).to.eql(['createdAt', 'email', 'id']));",
+              "pm.test('Identidad de la segunda cuenta', () => pm.expect(pm.response.json()).to.eql(JSON.parse(pm.collectionVariables.get('secondUser'))));"
+            ]
+          }
+        }
+      ]
+    },
+    {
+      "name": "12 — courses sigue disponible: 200",
+      "request": {
+        "method": "GET",
+        "header": [
+          {
+            "key": "Content-Type",
+            "value": "application/json"
+          }
+        ],
+        "url": "{{baseUrl}}/courses"
+      },
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "type": "text/javascript",
+            "exec": [
+              "pm.test('HTTP 200', () => pm.response.to.have.status(200));"
+            ]
+          }
+        }
+      ]
+    },
+    {
+      "name": "13 — students sigue disponible: 200",
+      "request": {
+        "method": "GET",
+        "header": [
+          {
+            "key": "Content-Type",
+            "value": "application/json"
+          }
+        ],
+        "url": "{{baseUrl}}/students"
+      },
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "type": "text/javascript",
+            "exec": [
+              "pm.test('HTTP 200', () => pm.response.to.have.status(200));"
+            ]
+          }
+        }
+      ]
+    },
+    {
+      "name": "14 — enrollments sigue disponible: 200",
+      "request": {
+        "method": "GET",
+        "header": [
+          {
+            "key": "Content-Type",
+            "value": "application/json"
+          }
+        ],
+        "url": "{{baseUrl}}/enrollments"
+      },
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "type": "text/javascript",
+            "exec": [
+              "pm.test('HTTP 200', () => pm.response.to.have.status(200));"
+            ]
+          }
+        }
+      ]
+    }
+  ]
+}

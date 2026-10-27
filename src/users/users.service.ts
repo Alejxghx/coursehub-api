@@ -16,6 +16,15 @@ export class UsersService {
     });
   }
 
+  // Only authentication needs the hash; ordinary queries keep select: false.
+  findByEmailWithPassword(email: string): Promise<User | null> {
+    return this.usersRepository
+      .createQueryBuilder('user')
+      .addSelect('user.passwordHash')
+      .where('user.email = :email', { email: email.trim().toLowerCase() })
+      .getOne();
+  }
+
   async create(email: string, passwordHash: string): Promise<User> {
     const normalizedEmail = email.trim().toLowerCase();
     if (await this.findByEmail(normalizedEmail)) {

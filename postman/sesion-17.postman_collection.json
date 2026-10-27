@@ -1,0 +1,262 @@
+{
+  "info": {
+    "name": "CourseHub — Sesión 17: emisión de JWT",
+    "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json",
+    "description": "Ejecuta en orden contra tu API y PostgreSQL local. Define practicePassword como variable privada del entorno (8–72 caracteres y hasta 72 bytes). El payload se decodifica localmente, sin enviar el token a terceros. No se guarda accessToken en variables de colección ni se imprime en consola. Decodificar no verifica la firma; test:jwt verifica firma, expiración y rotación. Las rutas todavía son públicas en sesión 17."
+  },
+  "variable": [
+    {
+      "key": "baseUrl",
+      "value": "http://localhost:3000"
+    },
+    {
+      "key": "expectedLifetimeSeconds",
+      "value": "900"
+    }
+  ],
+  "event": [
+    {
+      "listen": "prerequest",
+      "script": {
+        "type": "text/javascript",
+        "exec": [
+          "const password=pm.variables.get('practicePassword');",
+          "if(typeof password!=='string'||!password) throw new Error('Define practicePassword en el entorno privado de Postman');",
+          "pm.variables.set('practicePasswordJson',JSON.stringify(password));"
+        ]
+      }
+    },
+    {
+      "listen": "test",
+      "script": {
+        "type": "text/javascript",
+        "exec": [
+          "pm.test('No hay contraseñas ni hashes en la respuesta',()=>{const inspect=v=>{if(v&&typeof v==='object')Object.entries(v).forEach(([k,x])=>{pm.expect(['password','passwordHash','password_hash','JWT_SECRET']).not.to.include(k);inspect(x);});};inspect(pm.response.json());});"
+        ]
+      }
+    }
+  ],
+  "item": [
+    {
+      "name": "01 Registro de práctica 201",
+      "request": {
+        "method": "POST",
+        "header": [
+          {
+            "key": "Content-Type",
+            "value": "application/json"
+          }
+        ],
+        "url": "{{baseUrl}}/auth/register",
+        "body": {
+          "mode": "raw",
+          "raw": "{\n  \"email\": \"{{registrationEmail}}\",\n  \"password\": {{practicePasswordJson}}\n}"
+        }
+      },
+      "event": [
+        {
+          "listen": "prerequest",
+          "script": {
+            "type": "text/javascript",
+            "exec": [
+              "pm.collectionVariables.set('registrationEmail','sesion17-'+pm.variables.replaceIn('{{$guid}}')+'@example.com');"
+            ]
+          }
+        },
+        {
+          "listen": "test",
+          "script": {
+            "type": "text/javascript",
+            "exec": [
+              "pm.test('HTTP 201',()=>pm.response.to.have.status(201));",
+              "pm.collectionVariables.set('registeredUser',JSON.stringify(pm.response.json()));",
+              "pm.test('No emite token',()=>pm.expect(pm.response.json()).not.to.have.property('accessToken'));"
+            ]
+          }
+        }
+      ]
+    },
+    {
+      "name": "02 Login válido 200 y payload mínimo",
+      "request": {
+        "method": "POST",
+        "header": [
+          {
+            "key": "Content-Type",
+            "value": "application/json"
+          }
+        ],
+        "url": "{{baseUrl}}/auth/login",
+        "body": {
+          "mode": "raw",
+          "raw": "{\n  \"email\": \"{{registrationEmail}}\",\n  \"password\": {{practicePasswordJson}}\n}"
+        }
+      },
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "type": "text/javascript",
+            "exec": [
+              "pm.test('HTTP 200',()=>pm.response.to.have.status(200));",
+              "const body=pm.response.json();const user=JSON.parse(pm.collectionVariables.get('registeredUser'));",
+              "pm.test('Contrato nuevo',()=>{pm.expect(Object.keys(body).sort()).to.eql(['accessToken','user']);pm.expect(body.user).to.eql(user);pm.expect(body.accessToken.split('.')).to.have.lengthOf(3);});",
+              "const segment=body.accessToken.split('.')[1].replace(/-/g,'+').replace(/_/g,'/');const payload=JSON.parse(atob(segment+'='.repeat((4-segment.length%4)%4)));",
+              "pm.test('Payload mínimo sin secretos',()=>{pm.expect(Object.keys(payload).sort()).to.eql(['email','exp','iat','sub']);pm.expect(payload.sub).to.eql(user.id);pm.expect(payload.email).to.eql(user.email);});",
+              "pm.test('Caducidad configurada',()=>{pm.expect(payload.exp-payload.iat).to.eql(Number(pm.variables.get('expectedLifetimeSeconds')));});"
+            ]
+          }
+        }
+      ]
+    },
+    {
+      "name": "03 Password incorrecta 401",
+      "request": {
+        "method": "POST",
+        "header": [
+          {
+            "key": "Content-Type",
+            "value": "application/json"
+          }
+        ],
+        "url": "{{baseUrl}}/auth/login",
+        "body": {
+          "mode": "raw",
+          "raw": "{\n  \"email\": \"{{registrationEmail}}\",\n  \"password\": \"{{wrongPassword}}\"\n}"
+        }
+      },
+      "event": [
+        {
+          "listen": "prerequest",
+          "script": {
+            "type": "text/javascript",
+            "exec": [
+              "pm.variables.set('wrongPassword',pm.variables.replaceIn('{{$guid}}')); "
+            ]
+          }
+        },
+        {
+          "listen": "test",
+          "script": {
+            "type": "text/javascript",
+            "exec": [
+              "pm.test('HTTP 401',()=>pm.response.to.have.status(401));",
+              "pm.test('No emite token',()=>pm.expect(pm.response.json()).not.to.have.property('accessToken'));",
+              "pm.collectionVariables.set('wrongCredentialsResponse',JSON.stringify(pm.response.json()));"
+            ]
+          }
+        }
+      ]
+    },
+    {
+      "name": "04 Correo inexistente devuelve el mismo 401",
+      "request": {
+        "method": "POST",
+        "header": [
+          {
+            "key": "Content-Type",
+            "value": "application/json"
+          }
+        ],
+        "url": "{{baseUrl}}/auth/login",
+        "body": {
+          "mode": "raw",
+          "raw": "{\n  \"email\": \"missing-{{registrationEmail}}\",\n  \"password\": {{practicePasswordJson}}\n}"
+        }
+      },
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "type": "text/javascript",
+            "exec": [
+              "pm.test('HTTP 401',()=>pm.response.to.have.status(401));",
+              "pm.test('No emite token',()=>pm.expect(pm.response.json()).not.to.have.property('accessToken'));",
+              "pm.test('Mensaje idéntico',()=>pm.expect(pm.response.json()).to.eql(JSON.parse(pm.collectionVariables.get('wrongCredentialsResponse'))));"
+            ]
+          }
+        }
+      ]
+    },
+    {
+      "name": "05 DTO inválido 400 sin token",
+      "request": {
+        "method": "POST",
+        "header": [
+          {
+            "key": "Content-Type",
+            "value": "application/json"
+          }
+        ],
+        "url": "{{baseUrl}}/auth/login",
+        "body": {
+          "mode": "raw",
+          "raw": "{\n  \"email\": \"no-es-correo\",\n  \"password\": {{practicePasswordJson}}\n}"
+        }
+      },
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "type": "text/javascript",
+            "exec": [
+              "pm.test('HTTP 400',()=>pm.response.to.have.status(400));",
+              "pm.test('No emite token',()=>pm.expect(pm.response.json()).not.to.have.property('accessToken'));"
+            ]
+          }
+        }
+      ]
+    },
+    {
+      "name": "Ruta pública /courses 200",
+      "request": {
+        "method": "GET",
+        "header": [],
+        "url": "{{baseUrl}}/courses"
+      },
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "type": "text/javascript",
+            "exec": ["pm.test('HTTP 200',()=>pm.response.to.have.status(200));"]
+          }
+        }
+      ]
+    },
+    {
+      "name": "Ruta pública /students 200",
+      "request": {
+        "method": "GET",
+        "header": [],
+        "url": "{{baseUrl}}/students"
+      },
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "type": "text/javascript",
+            "exec": ["pm.test('HTTP 200',()=>pm.response.to.have.status(200));"]
+          }
+        }
+      ]
+    },
+    {
+      "name": "Ruta pública /enrollments 200",
+      "request": {
+        "method": "GET",
+        "header": [],
+        "url": "{{baseUrl}}/enrollments"
+      },
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "type": "text/javascript",
+            "exec": ["pm.test('HTTP 200',()=>pm.response.to.have.status(200));"]
+          }
+        }
+      ]
+    }
+  ]
+}

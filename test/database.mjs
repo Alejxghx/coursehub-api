@@ -11,7 +11,12 @@ import { Course } from '../dist/courses/entities/course.entity.js';
 import { User } from '../dist/users/entities/user.entity.js';
 
 export async function createTestDatabase() {
-  process.loadEnvFile();
+  // CI can supply environment variables directly without creating a .env file.
+  try {
+    process.loadEnvFile();
+  } catch (error) {
+    if (error.code !== 'ENOENT') throw error;
+  }
   const options = {
     type: 'postgres',
     host: process.env.DATABASE_HOST,
