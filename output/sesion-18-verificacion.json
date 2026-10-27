@@ -1,0 +1,197 @@
+{
+  "session": 18,
+  "checkedAt": "2026-10-27T19:11:27.147Z",
+  "cases": [
+    {
+      "name": "01 Registrar cuenta de práctica 201",
+      "method": "POST",
+      "path": "/auth/register",
+      "status": 201,
+      "body": {
+        "id": 1,
+        "email": "sesion18-fca5b9db-2815-4ff9-a901-293000705aae@example.com",
+        "createdAt": "2026-10-27T19:11:26.928Z"
+      }
+    },
+    {
+      "name": "02 Login 200 - CAPTURAR VISUALIZE",
+      "method": "POST",
+      "path": "/auth/login",
+      "status": 200,
+      "body": {
+        "accessToken": "[OMITIDO: credencial]",
+        "user": {
+          "id": 1,
+          "email": "sesion18-fca5b9db-2815-4ff9-a901-293000705aae@example.com",
+          "createdAt": "2026-10-27T19:11:26.928Z"
+        }
+      }
+    },
+    {
+      "name": "03 Perfil con Bearer válido 200",
+      "method": "GET",
+      "path": "/auth/me",
+      "status": 200,
+      "body": {
+        "id": 1,
+        "email": "sesion18-fca5b9db-2815-4ff9-a901-293000705aae@example.com"
+      }
+    },
+    {
+      "name": "04 Perfil sin encabezado 401",
+      "method": "GET",
+      "path": "/auth/me",
+      "status": 401,
+      "body": {
+        "message": "Unauthorized",
+        "statusCode": 401
+      }
+    },
+    {
+      "name": "05 Perfil con token alterado 401",
+      "method": "GET",
+      "path": "/auth/me",
+      "status": 401,
+      "body": {
+        "message": "Unauthorized",
+        "statusCode": 401
+      }
+    },
+    {
+      "name": "06 Perfil con esquema Token incorrecto 401",
+      "method": "GET",
+      "path": "/auth/me",
+      "status": 401,
+      "body": {
+        "message": "Unauthorized",
+        "statusCode": 401
+      }
+    },
+    {
+      "name": "07 Contar cursos antes del intento",
+      "method": "GET",
+      "path": "/courses",
+      "status": 200,
+      "body": {
+        "items": [],
+        "meta": {
+          "total": 0,
+          "page": 1,
+          "limit": 10,
+          "totalPages": 0
+        }
+      }
+    },
+    {
+      "name": "08 Crear curso sin token 401",
+      "method": "POST",
+      "path": "/courses",
+      "status": 401,
+      "body": {
+        "message": "Unauthorized",
+        "statusCode": 401
+      }
+    },
+    {
+      "name": "09 Confirmar que no se creó ningún curso",
+      "method": "GET",
+      "path": "/courses",
+      "status": 200,
+      "body": {
+        "items": [],
+        "meta": {
+          "total": 0,
+          "page": 1,
+          "limit": 10,
+          "totalPages": 0
+        }
+      }
+    },
+    {
+      "name": "10 Token válido pero DTO inválido 400",
+      "method": "POST",
+      "path": "/courses",
+      "status": 400,
+      "body": {
+        "message": [
+          "level must be one of the following values: beginner, intermediate, advanced"
+        ],
+        "error": "Bad Request",
+        "statusCode": 400
+      }
+    },
+    {
+      "name": "11 Confirmar que el DTO inválido tampoco creó cursos",
+      "method": "GET",
+      "path": "/courses",
+      "status": 200,
+      "body": {
+        "items": [],
+        "meta": {
+          "total": 0,
+          "page": 1,
+          "limit": 10,
+          "totalPages": 0
+        }
+      }
+    },
+    {
+      "name": "12 Mismo curso con token válido 201",
+      "method": "POST",
+      "path": "/courses",
+      "status": 201,
+      "body": {
+        "id": 1,
+        "title": "Evidencia JWT fca5b9db-2815-4ff9-a901-293000705aae",
+        "level": "beginner"
+      }
+    },
+    {
+      "name": "13 Confirmar que ahora sí existe un curso adicional",
+      "method": "GET",
+      "path": "/courses",
+      "status": 200,
+      "body": {
+        "items": [
+          {
+            "id": 1,
+            "title": "Evidencia JWT fca5b9db-2815-4ff9-a901-293000705aae",
+            "level": "beginner"
+          }
+        ],
+        "meta": {
+          "total": 1,
+          "page": 1,
+          "limit": 10,
+          "totalPages": 1
+        }
+      }
+    }
+  ],
+  "postmanCollectionCheck": {
+    "requests": 13,
+    "assertions": 32,
+    "statuses": [
+      201,
+      200,
+      200,
+      401,
+      401,
+      401,
+      200,
+      401,
+      200,
+      400,
+      200,
+      201,
+      200
+    ],
+    "runtime": "Scripts de la colección ejecutados en sandbox vm contra HTTP y PostgreSQL reales; no sesión gráfica de Postman"
+  },
+  "testSummary": {
+    "unit": 31,
+    "httpAndIntegration": 42,
+    "e2e": 1,
+    "total": 74
+  }
+}

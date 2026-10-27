@@ -4,6 +4,7 @@ import assert from 'node:assert/strict';
 import { ValidationPipe } from '@nestjs/common';
 import { getDataSourceToken } from '@nestjs/typeorm';
 import request from 'supertest';
+import { JwtService } from '@nestjs/jwt';
 import { createTestDatabase } from './database.mjs';
 import { Enrollment } from '../dist/enrollments/entities/enrollment.entity.js';
 import { Student } from '../dist/students/entities/student.entity.js';
@@ -12,6 +13,7 @@ it('sesiones 9 y 10: persistencia, restricciones y flujo completo de entrega', a
   const database = await createTestDatabase();
   let app;
   let api;
+  let courseToken;
   const open = async () => {
     app = await database.open();
     app.useGlobalPipes(
@@ -22,6 +24,10 @@ it('sesiones 9 y 10: persistencia, restricciones y flujo completo de entrega', a
       }),
     );
     await app.init();
+    // Signed fixture identity; the session-18 suite tests real register/login.
+    courseToken = await app
+      .get(JwtService)
+      .signAsync({ sub: 1, email: 'fixture@example.com' });
     api = request(app.getHttpServer());
   };
   const restart = async () => {
@@ -34,6 +40,7 @@ it('sesiones 9 y 10: persistencia, restricciones y flujo completo de entrega', a
     const course = (
       await api
         .post('/courses')
+        .set('Authorization', 'Bearer ' + courseToken)
         .send({ title: 'Entrega NestJS', level: 'beginner' })
         .expect(201)
     ).body;
@@ -174,10 +181,14 @@ it('sesiones 9 y 10: persistencia, restricciones y flujo completo de entrega', a
       .expect(204)
       .expect('');
     await restart();
-    await api.get('/enrollments').query(pair).expect(200).expect((r) => {
-      assert.deepEqual(r.body.items, []);
-      assert.equal(r.body.meta.total, 0);
-    });
+    await api
+      .get('/enrollments')
+      .query(pair)
+      .expect(200)
+      .expect((r) => {
+        assert.deepEqual(r.body.items, []);
+        assert.equal(r.body.meta.total, 0);
+      });
     await api.delete('/enrollments/' + enrollment.id).expect(404);
     await api.get('/students/' + student.id).expect(200);
     await api.get('/courses/' + course.id).expect(200);

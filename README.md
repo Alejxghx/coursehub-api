@@ -1,4 +1,4 @@
-# CourseHub API — Sesiones 9 a 17
+# CourseHub API — Sesiones 9 a 18
 
 Cursos, estudiantes y matrículas persistentes en PostgreSQL con NestJS y TypeORM.
 
@@ -25,6 +25,30 @@ La base indicada en `DATABASE_NAME` debe existir. Variables: `DATABASE_HOST`,
 `synchronize` crea/actualiza tablas únicamente con `NODE_ENV=development`.
 En `test` y `production` es `false`: el esquema debe existir previamente. Esta
 entrega no implementa ni ejecuta migraciones. No se precargan datos de ejemplo en la API.
+
+## Sesión 18: verificar JWT y proteger rutas
+
+La política actual exige Bearer JWT en `GET /auth/me` y `POST /courses`.
+Passport verifica firma HS256 y vencimiento; `JwtStrategy` prepara una identidad
+segura `{ id, email }` y el mismo `JwtAuthGuard` protege ambas rutas.
+Registro y login siguen públicos. Las demás rutas conservan su acceso público
+para esta práctica; todavía no se implementan roles ni permisos.
+
+Sin token o con token inválido/expirado se responde `401` antes del controlador.
+Con token válido, crear cursos mantiene sus DTOs: body inválido `400`, body
+válido `201`. La estrategia no consulta el estado de la cuenta ni implementa
+revocación individual.
+
+- [Guía y pasos para las capturas](docs/sesion-18.md).
+- [Colección de Postman sesión 18](postman/sesion-18.postman_collection.json).
+- [PDF de cambios y evidencias](output/pdf/CoursehubAPI-Sesion-18.pdf).
+- [Respuestas reales sin tokens completos](output/sesion-18-verificacion.json).
+
+`npm run test:jwt:guard` comprueba la matriz HTTP con PostgreSQL temporal.
+Se verificaron 74 pruebas (31 unitarias, 42 HTTP/integración y 1 e2e), además
+de las 13 peticiones y 32 aserciones de la colección ejecutadas contra la API.
+Los apartados de sesiones 16 y 17 describen sus etapas anteriores; este apartado
+documenta la política vigente.
 
 ## Sesión 17: emisión de tokens JWT
 

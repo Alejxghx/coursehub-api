@@ -4,6 +4,7 @@ import assert from 'node:assert/strict';
 import { createTestApp } from './database.mjs';
 import { ValidationPipe } from '@nestjs/common';
 import request from 'supertest';
+import { JwtService } from '@nestjs/jwt';
 
 function enrollmentIds(enrollment) {
   return {
@@ -45,6 +46,13 @@ describe('Integración de Cursos, Estudiantes y Matrículas', () => {
   it('registra una matrícula y comparte los datos de Cursos y Estudiantes', async () => {
     const course = await api
       .post('/courses')
+      .set(
+        'Authorization',
+        'Bearer ' +
+          (await app
+            .get(JwtService)
+            .signAsync({ sub: 1, email: 'fixture@example.com' })),
+      )
       .send({ title: 'Curso de prueba', level: 'beginner' })
       .expect(201);
     const body = { studentId: 1, courseId: course.body.id };
@@ -109,10 +117,13 @@ describe('Integración de Cursos, Estudiantes y Matrículas', () => {
     await api.get('/students/999/enrollments').expect(404);
     await api.get('/courses/999/enrollments').expect(404);
     await api.delete('/enrollments/999').expect(404);
-    await api.get('/enrollments').expect(200).expect((r) => {
-      assert.deepEqual(r.body.items, []);
-      assert.equal(r.body.meta.total, 0);
-    });
+    await api
+      .get('/enrollments')
+      .expect(200)
+      .expect((r) => {
+        assert.deepEqual(r.body.items, []);
+        assert.equal(r.body.meta.total, 0);
+      });
   });
 
   it('filtra por estudiante, curso y la intersección de ambos', async () => {
@@ -193,10 +204,13 @@ describe('Integración de Cursos, Estudiantes y Matrículas', () => {
     ]) {
       await api.post('/enrollments').send(body).expect(400);
     }
-    await api.get('/enrollments').expect(200).expect((r) => {
-      assert.deepEqual(r.body.items, []);
-      assert.equal(r.body.meta.total, 0);
-    });
+    await api
+      .get('/enrollments')
+      .expect(200)
+      .expect((r) => {
+        assert.deepEqual(r.body.items, []);
+        assert.equal(r.body.meta.total, 0);
+      });
   });
 
   it('valida los filtros y los identificadores de todas las rutas nuevas', async () => {

@@ -8,6 +8,7 @@ import { getMetadataArgsStorage, QueryFailedError } from 'typeorm';
 import * as bcrypt from 'bcrypt';
 import { randomBytes } from 'node:crypto';
 import { JwtService } from '@nestjs/jwt';
+import { PassportModule } from '@nestjs/passport';
 import request from 'supertest';
 import { AuthController } from '../dist/auth/auth.controller.js';
 import { AuthService } from '../dist/auth/auth.service.js';
@@ -69,6 +70,7 @@ describe('Sesiones 15 y 16: registro e inicio de sesión HTTP', () => {
 
   before(async () => {
     const module = await Test.createTestingModule({
+      imports: [PassportModule.register({ defaultStrategy: 'jwt' })],
       controllers: [AuthController],
       providers: [
         AuthService,

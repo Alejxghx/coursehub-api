@@ -1,0 +1,413 @@
+{
+  "info": {
+    "name": "CourseHub — Sesión 18: Bearer JWT y rutas protegidas",
+    "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json",
+    "description": "Ejecutar en orden. API y PostgreSQL locales; entorno privado con practicePassword. El login guarda accessToken y tamperedToken solo en el entorno activo para las peticiones manuales y Visualize muestra identidad/payload sin el token. No exportes el entorno ni muestres valores de tokens en capturas. GET /auth/me y POST /courses requieren JWT; las demás rutas actuales conservan su política documentada. Para expiración por HTTP ejecuta test:jwt:guard; esta colección no guarda secretos de firma ni fabrica tokens expirados."
+  },
+  "variable": [
+    {
+      "key": "baseUrl",
+      "value": "http://localhost:3000"
+    }
+  ],
+  "event": [
+    {
+      "listen": "test",
+      "script": {
+        "type": "text/javascript",
+        "exec": [
+          "pm.test('Respuesta sin contraseña ni hash',()=>{const visit=v=>{if(v&&typeof v==='object')for(const [k,x] of Object.entries(v)){pm.expect(['password','passwordHash','password_hash','JWT_SECRET']).not.to.include(k);visit(x);}};visit(pm.response.json());});"
+        ]
+      }
+    }
+  ],
+  "item": [
+    {
+      "name": "01 Registrar cuenta de práctica 201",
+      "request": {
+        "method": "POST",
+        "auth": {
+          "type": "noauth"
+        },
+        "header": [
+          {
+            "key": "Content-Type",
+            "value": "application/json"
+          }
+        ],
+        "url": "{{baseUrl}}/auth/register",
+        "body": {
+          "mode": "raw",
+          "raw": "{\n  \"email\": \"{{registrationEmail}}\",\n  \"password\": {{practicePasswordJson}}\n}"
+        }
+      },
+      "event": [
+        {
+          "listen": "prerequest",
+          "script": {
+            "type": "text/javascript",
+            "exec": [
+              "const password=pm.variables.get('practicePassword');if(typeof password!=='string'||!password)throw new Error('Define practicePassword en un entorno privado.');",
+              "pm.variables.set('practicePasswordJson',JSON.stringify(password));",
+              "const id=pm.variables.replaceIn('{{$guid}}');pm.collectionVariables.set('registrationEmail','sesion18-'+id+'@example.com');pm.collectionVariables.set('courseTitle','Evidencia JWT '+id);"
+            ]
+          }
+        },
+        {
+          "listen": "test",
+          "script": {
+            "type": "text/javascript",
+            "exec": [
+              "pm.test('HTTP 201',()=>pm.response.to.have.status(201));",
+              "pm.collectionVariables.set('registeredUser',JSON.stringify(pm.response.json()));"
+            ]
+          }
+        }
+      ]
+    },
+    {
+      "name": "02 Login 200 - CAPTURAR VISUALIZE",
+      "request": {
+        "method": "POST",
+        "auth": {
+          "type": "noauth"
+        },
+        "header": [
+          {
+            "key": "Content-Type",
+            "value": "application/json"
+          }
+        ],
+        "url": "{{baseUrl}}/auth/login",
+        "body": {
+          "mode": "raw",
+          "raw": "{\n  \"email\": \"{{registrationEmail}}\",\n  \"password\": {{practicePasswordJson}}\n}"
+        }
+      },
+      "event": [
+        {
+          "listen": "prerequest",
+          "script": {
+            "type": "text/javascript",
+            "exec": [
+              "pm.variables.set('practicePasswordJson',JSON.stringify(pm.variables.get('practicePassword')));"
+            ]
+          }
+        },
+        {
+          "listen": "test",
+          "script": {
+            "type": "text/javascript",
+            "exec": [
+              "pm.test('HTTP 200',()=>pm.response.to.have.status(200));",
+              "const b=pm.response.json();pm.test('Usuario seguro',()=>pm.expect(b.user).to.eql(JSON.parse(pm.collectionVariables.get('registeredUser'))));",
+              "pm.environment.set('accessToken',b.accessToken);",
+              "const parts=b.accessToken.split('.');const base=parts[1].replace(/-/g,'+').replace(/_/g,'/');const payload=JSON.parse(atob(base+'='.repeat((4-base.length%4)%4)));",
+              "pm.test('Payload mínimo y duración',()=>{pm.expect(Object.keys(payload).sort()).to.eql(['email','exp','iat','sub']);pm.expect(payload.sub).to.eql(b.user.id);pm.expect(payload.exp).to.be.greaterThan(payload.iat);});",
+              "const altered={...payload,sub:payload.sub+1000};parts[1]=btoa(JSON.stringify(altered)).replace(/=/g,'').replace(/\\+/g,'-').replace(/\\//g,'_');pm.environment.set('tamperedToken',parts.join('.'));",
+              "pm.visualizer.set('<h3>Login HTTP 200</h3><p>Token completo omitido</p><pre>{{data}}</pre>',{data:JSON.stringify({user:b.user,payload,duracionSegundos:payload.exp-payload.iat},null,2)});"
+            ]
+          }
+        }
+      ]
+    },
+    {
+      "name": "03 Perfil con Bearer válido 200",
+      "request": {
+        "method": "GET",
+        "auth": {
+          "type": "bearer",
+          "bearer": [
+            {
+              "key": "token",
+              "value": "{{accessToken}}",
+              "type": "string"
+            }
+          ]
+        },
+        "header": [],
+        "url": "{{baseUrl}}/auth/me"
+      },
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "type": "text/javascript",
+            "exec": [
+              "pm.test('HTTP 200',()=>pm.response.to.have.status(200));",
+              "const u=JSON.parse(pm.collectionVariables.get('registeredUser'));pm.test('Solo identidad',()=>pm.expect(pm.response.json()).to.eql({id:u.id,email:u.email}));"
+            ]
+          }
+        }
+      ]
+    },
+    {
+      "name": "04 Perfil sin encabezado 401",
+      "request": {
+        "method": "GET",
+        "auth": {
+          "type": "noauth"
+        },
+        "header": [],
+        "url": "{{baseUrl}}/auth/me"
+      },
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "type": "text/javascript",
+            "exec": ["pm.test('HTTP 401',()=>pm.response.to.have.status(401));"]
+          }
+        }
+      ]
+    },
+    {
+      "name": "05 Perfil con token alterado 401",
+      "request": {
+        "method": "GET",
+        "auth": {
+          "type": "bearer",
+          "bearer": [
+            {
+              "key": "token",
+              "value": "{{tamperedToken}}",
+              "type": "string"
+            }
+          ]
+        },
+        "header": [],
+        "url": "{{baseUrl}}/auth/me"
+      },
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "type": "text/javascript",
+            "exec": ["pm.test('HTTP 401',()=>pm.response.to.have.status(401));"]
+          }
+        }
+      ]
+    },
+    {
+      "name": "06 Perfil con esquema Token incorrecto 401",
+      "request": {
+        "method": "GET",
+        "auth": {
+          "type": "noauth"
+        },
+        "header": [
+          {
+            "key": "Authorization",
+            "value": "Token {{accessToken}}"
+          }
+        ],
+        "url": "{{baseUrl}}/auth/me"
+      },
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "type": "text/javascript",
+            "exec": ["pm.test('HTTP 401',()=>pm.response.to.have.status(401));"]
+          }
+        }
+      ]
+    },
+    {
+      "name": "07 Contar cursos antes del intento",
+      "request": {
+        "method": "GET",
+        "auth": {
+          "type": "noauth"
+        },
+        "header": [],
+        "url": "{{baseUrl}}/courses"
+      },
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "type": "text/javascript",
+            "exec": [
+              "pm.test('HTTP 200',()=>pm.response.to.have.status(200));",
+              "pm.collectionVariables.set('coursesBefore',String(pm.response.json().meta.total));"
+            ]
+          }
+        }
+      ]
+    },
+    {
+      "name": "08 Crear curso sin token 401",
+      "request": {
+        "method": "POST",
+        "auth": {
+          "type": "noauth"
+        },
+        "header": [
+          {
+            "key": "Content-Type",
+            "value": "application/json"
+          }
+        ],
+        "url": "{{baseUrl}}/courses",
+        "body": {
+          "mode": "raw",
+          "raw": "{\n  \"title\": \"{{courseTitle}}\",\n  \"level\": \"beginner\"\n}"
+        }
+      },
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "type": "text/javascript",
+            "exec": ["pm.test('HTTP 401',()=>pm.response.to.have.status(401));"]
+          }
+        }
+      ]
+    },
+    {
+      "name": "09 Confirmar que no se creó ningún curso",
+      "request": {
+        "method": "GET",
+        "auth": {
+          "type": "noauth"
+        },
+        "header": [],
+        "url": "{{baseUrl}}/courses"
+      },
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "type": "text/javascript",
+            "exec": [
+              "pm.test('HTTP 200',()=>pm.response.to.have.status(200));",
+              "pm.test('Misma cantidad de cursos',()=>pm.expect(pm.response.json().meta.total).to.eql(Number(pm.collectionVariables.get('coursesBefore'))));"
+            ]
+          }
+        }
+      ]
+    },
+    {
+      "name": "10 Token válido pero DTO inválido 400",
+      "request": {
+        "method": "POST",
+        "auth": {
+          "type": "bearer",
+          "bearer": [
+            {
+              "key": "token",
+              "value": "{{accessToken}}",
+              "type": "string"
+            }
+          ]
+        },
+        "header": [
+          {
+            "key": "Content-Type",
+            "value": "application/json"
+          }
+        ],
+        "url": "{{baseUrl}}/courses",
+        "body": {
+          "mode": "raw",
+          "raw": "{\n  \"title\": \"{{courseTitle}}\",\n  \"level\": \"experto\"\n}"
+        }
+      },
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "type": "text/javascript",
+            "exec": ["pm.test('HTTP 400',()=>pm.response.to.have.status(400));"]
+          }
+        }
+      ]
+    },
+    {
+      "name": "11 Confirmar que el DTO inválido tampoco creó cursos",
+      "request": {
+        "method": "GET",
+        "auth": {
+          "type": "noauth"
+        },
+        "header": [],
+        "url": "{{baseUrl}}/courses"
+      },
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "type": "text/javascript",
+            "exec": [
+              "pm.test('HTTP 200',()=>pm.response.to.have.status(200));",
+              "pm.test('Sin cambios tras 400',()=>pm.expect(pm.response.json().meta.total).to.eql(Number(pm.collectionVariables.get('coursesBefore'))));"
+            ]
+          }
+        }
+      ]
+    },
+    {
+      "name": "12 Mismo curso con token válido 201",
+      "request": {
+        "method": "POST",
+        "auth": {
+          "type": "bearer",
+          "bearer": [
+            {
+              "key": "token",
+              "value": "{{accessToken}}",
+              "type": "string"
+            }
+          ]
+        },
+        "header": [
+          {
+            "key": "Content-Type",
+            "value": "application/json"
+          }
+        ],
+        "url": "{{baseUrl}}/courses",
+        "body": {
+          "mode": "raw",
+          "raw": "{\n  \"title\": \"{{courseTitle}}\",\n  \"level\": \"beginner\"\n}"
+        }
+      },
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "type": "text/javascript",
+            "exec": [
+              "pm.test('HTTP 201',()=>pm.response.to.have.status(201));",
+              "pm.collectionVariables.set('createdCourseId',String(pm.response.json().id));"
+            ]
+          }
+        }
+      ]
+    },
+    {
+      "name": "13 Confirmar que ahora sí existe un curso adicional",
+      "request": {
+        "method": "GET",
+        "auth": {
+          "type": "noauth"
+        },
+        "header": [],
+        "url": "{{baseUrl}}/courses"
+      },
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "type": "text/javascript",
+            "exec": [
+              "pm.test('HTTP 200',()=>pm.response.to.have.status(200));",
+              "pm.test('Se creó exactamente un curso',()=>pm.expect(pm.response.json().meta.total).to.eql(Number(pm.collectionVariables.get('coursesBefore'))+1));"
+            ]
+          }
+        }
+      ]
+    }
+  ]
+}

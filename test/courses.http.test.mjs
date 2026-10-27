@@ -3,12 +3,14 @@ import { it } from 'node:test';
 import assert from 'node:assert/strict';
 import { ValidationPipe } from '@nestjs/common';
 import request from 'supertest';
+import { JwtService } from '@nestjs/jwt';
 import { createTestDatabase } from './database.mjs';
 
 it('CRUD de cursos conserva datos después de reiniciar la aplicación', async () => {
   const database = await createTestDatabase();
   let app;
   let api;
+  let courseToken;
   const open = async () => {
     app = await database.open();
     app.useGlobalPipes(
@@ -19,30 +21,41 @@ it('CRUD de cursos conserva datos después de reiniciar la aplicación', async (
       }),
     );
     await app.init();
+    // Signed fixture identity; the session-18 suite tests real register/login.
+    courseToken = await app
+      .get(JwtService)
+      .signAsync({ sub: 1, email: 'fixture@example.com' });
     api = request(app.getHttpServer());
   };
   try {
     await open();
-    await api.get('/courses').expect(200).expect({
-      items: [],
-      meta: { total: 0, page: 1, limit: 10, totalPages: 0 },
-    });
+    await api
+      .get('/courses')
+      .expect(200)
+      .expect({
+        items: [],
+        meta: { total: 0, page: 1, limit: 10, totalPages: 0 },
+      });
     await api
       .post('/courses')
+      .set('Authorization', 'Bearer ' + courseToken)
       .send({ title: '', level: 'invalid' })
       .expect(400);
     const created = await api
       .post('/courses')
+      .set('Authorization', 'Bearer ' + courseToken)
       .send({ title: 'Curso persistente de prueba', level: 'beginner' })
       .expect(201);
     const id = created.body.id;
     assert.equal(typeof id, 'number');
     await api
       .post('/courses')
+      .set('Authorization', 'Bearer ' + courseToken)
       .send({ title: 'Segundo', level: 'advanced' })
       .expect(201);
     await api
       .post('/courses')
+      .set('Authorization', 'Bearer ' + courseToken)
       .send({ title: 'Tercero', level: 'beginner' })
       .expect(201);
     const all = await api.get('/courses').expect(200);
@@ -72,6 +85,7 @@ it('CRUD de cursos conserva datos después de reiniciar la aplicación', async (
       .expect(400);
     await api
       .post('/courses')
+      .set('Authorization', 'Bearer ' + courseToken)
       .send({ title: 'Extra', level: 'beginner', extra: true })
       .expect(400);
     await app.close();
