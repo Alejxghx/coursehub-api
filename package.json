@@ -24,12 +24,14 @@
     "test:e2e": "vitest run --config ./vitest.config.e2e.ts",
     "test:students": "npm run build && node --test test/students.http.test.mjs",
     "test:enrollments": "npm run build && node --test test/enrollments.http.test.mjs",
-    "test:integration": "npm run build && node --test test/courses.http.test.mjs test/students.http.test.mjs test/enrollments.http.test.mjs test/persistence.http.test.mjs test/auth.persistence.http.test.mjs test/jwt-guard.http.test.mjs",
+    "test:integration": "npm run build && node --test test/courses.http.test.mjs test/students.http.test.mjs test/enrollments.http.test.mjs test/persistence.http.test.mjs test/auth.persistence.http.test.mjs test/jwt-guard.http.test.mjs test/week11.http.test.mjs",
     "test:courses": "npm run build && node --test test/courses.http.test.mjs",
     "test:persistence": "npm run build && node --test test/persistence.http.test.mjs",
     "test:jwt": "npm run build && node --test test/jwt.http.test.mjs",
     "verify:session17": "npm run build && node test/session-17-evidence.mjs",
-    "test:jwt:guard": "npm run build && node --test test/jwt-guard.http.test.mjs"
+    "test:jwt:guard": "npm run build && node --test test/jwt-guard.http.test.mjs",
+    "test:week11": "npm run build && node --test test/week11.http.test.mjs",
+    "user:role": "node scripts/set-user-role.mjs"
   },
   "dependencies": {
     "@nestjs/common": "^12.0.1",
@@ -38,6 +40,7 @@
     "@nestjs/jwt": "^12.0.3",
     "@nestjs/passport": "^12.0.0",
     "@nestjs/platform-express": "^12.0.1",
+    "@nestjs/throttler": "^6.7.1",
     "@nestjs/typeorm": "^12.0.2",
     "bcrypt": "^6.0.0",
     "class-transformer": "^0.5.1",

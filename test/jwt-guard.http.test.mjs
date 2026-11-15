@@ -9,6 +9,7 @@ import { getDataSourceToken } from '@nestjs/typeorm';
 import request from 'supertest';
 import { createTestDatabase } from './database.mjs';
 import { CoursesService } from '../dist/courses/courses.service.js';
+import { User } from '../dist/users/entities/user.entity.js';
 import { Course } from '../dist/courses/entities/course.entity.js';
 
 describe('Sesión 18: estrategia, guard y rutas protegidas con PostgreSQL', () => {
@@ -51,6 +52,10 @@ describe('Sesión 18: estrategia, guard y rutas protegidas con PostgreSQL', () =
       .send(credentials)
       .expect(201);
     user = register.body;
+    await app
+      .get(getDataSourceToken())
+      .getRepository(User)
+      .update(user.id, { role: 'teacher' });
     const login = await api.post('/auth/login').send(credentials).expect(200);
     assert.deepEqual(login.body.user, user);
     token = login.body.accessToken;
@@ -70,7 +75,11 @@ describe('Sesión 18: estrategia, guard y rutas protegidas con PostgreSQL', () =
       .get('/auth/me')
       .set('Authorization', `Bearer ${token}`)
       .expect(200);
-    assert.deepEqual(response.body, { id: user.id, email: user.email });
+    assert.deepEqual(response.body, {
+      id: user.id,
+      email: user.email,
+      role: 'teacher',
+    });
   });
 
   it('sin token, esquema incorrecto o token mal formado: 401 antes del controlador', async () => {
@@ -83,10 +92,8 @@ describe('Sesión 18: estrategia, guard y rutas protegidas con PostgreSQL', () =
       let req = api.get('/auth/me');
       if (header) req = req.set('Authorization', header);
       const response = await req.expect(401);
-      assert.deepEqual(response.body, {
-        message: 'Unauthorized',
-        statusCode: 401,
-      });
+      assert.equal(response.body.message, 'Unauthorized');
+      assert.equal(response.body.statusCode, 401);
     }
     // Query parameters do not substitute for the Authorization header.
     await api.get('/auth/me').query({ accessToken: token }).expect(401);
@@ -144,7 +151,7 @@ describe('Sesión 18: estrategia, guard y rutas protegidas con PostgreSQL', () =
       .get('/auth/me')
       .set('Authorization', `Bearer ${extra}`)
       .expect(200)
-      .expect({ id: user.id, email: user.email });
+      .expect({ id: user.id, email: user.email, role: 'teacher' });
   });
 
   it('crear curso sin identidad válida no llama al servicio ni cambia PostgreSQL', async () => {

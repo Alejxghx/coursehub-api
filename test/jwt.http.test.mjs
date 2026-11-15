@@ -4,6 +4,7 @@ import { randomBytes } from 'node:crypto';
 import { after, before, describe, it } from 'node:test';
 import { ValidationPipe } from '@nestjs/common';
 import { ConfigModule } from '@nestjs/config';
+import { ThrottlerGuard } from '@nestjs/throttler';
 import { JwtService } from '@nestjs/jwt';
 import { Test } from '@nestjs/testing';
 import { getRepositoryToken } from '@nestjs/typeorm';
@@ -72,6 +73,8 @@ describe('Sesión 17: JWT firmado después del login', () => {
           };
         },
       })
+      .overrideGuard(ThrottlerGuard)
+      .useValue({ canActivate: () => true })
       .compile();
     jwt = module.get(JwtService);
     const signAsync = jwt.signAsync.bind(jwt);
@@ -137,7 +140,7 @@ describe('Sesión 17: JWT firmado después del login', () => {
       assert.equal(Object.hasOwn(response.body, 'accessToken'), false);
       responses.push(response.body);
     }
-    assert.deepEqual(responses[0], responses[1]);
+    assert.equal(responses[0].message, responses[1].message);
     assert.equal(responses[0].message, 'Invalid credentials');
     assert.equal(signed, beforeSigning);
   });

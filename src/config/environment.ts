@@ -5,6 +5,28 @@ export const environmentSchema = Joi.object({
     .valid('development', 'test', 'production')
     .default('development'),
   PORT: Joi.number().port().min(1).default(3000),
+  CORS_ORIGINS: Joi.string()
+    .custom((value: string, helpers) => {
+      try {
+        for (const origin of value.split(',')) {
+          const url = new URL(origin.trim());
+          if (
+            !['http:', 'https:'].includes(url.protocol) ||
+            url.origin !== origin.trim()
+          )
+            return helpers.error('any.invalid');
+        }
+        return value;
+      } catch {
+        return helpers.error('any.invalid');
+      }
+    })
+    .when('NODE_ENV', {
+      is: 'production',
+      // oxlint-disable-next-line unicorn/no-thenable
+      then: Joi.required(),
+      otherwise: Joi.string().default('http://localhost:3001'),
+    }),
   JWT_SECRET: Joi.string()
     .min(32)
     .pattern(/\S/)

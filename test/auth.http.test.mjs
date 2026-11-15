@@ -7,6 +7,7 @@ import { getRepositoryToken } from '@nestjs/typeorm';
 import { getMetadataArgsStorage, QueryFailedError } from 'typeorm';
 import * as bcrypt from 'bcrypt';
 import { randomBytes } from 'node:crypto';
+import { ThrottlerGuard } from '@nestjs/throttler';
 import { JwtService } from '@nestjs/jwt';
 import { PassportModule } from '@nestjs/passport';
 import request from 'supertest';
@@ -84,7 +85,10 @@ describe('Sesiones 15 y 16: registro e inicio de sesión HTTP', () => {
         },
         { provide: getRepositoryToken(User), useValue: repository },
       ],
-    }).compile();
+    })
+      .overrideGuard(ThrottlerGuard)
+      .useValue({ canActivate: () => true })
+      .compile();
     app = module.createNestApplication({ logger: false });
     app.useGlobalPipes(
       new ValidationPipe({

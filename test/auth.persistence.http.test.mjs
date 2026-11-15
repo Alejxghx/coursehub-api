@@ -92,12 +92,19 @@ it('registro y login con PostgreSQL: hash privado, unicidad y persistencia tras 
       .post('/auth/login')
       .send({ ...credentials, email: 'missing@example.com' })
       .expect(401);
-    assert.deepEqual(wrongPassword.body, missingEmail.body);
-    assert.deepEqual(wrongPassword.body, {
-      statusCode: 401,
-      message: 'Invalid credentials',
-      error: 'Unauthorized',
-    });
+    assert.equal(wrongPassword.body.message, missingEmail.body.message);
+    assert.deepEqual(
+      {
+        statusCode: wrongPassword.body.statusCode,
+        message: wrongPassword.body.message,
+        error: wrongPassword.body.error,
+      },
+      {
+        statusCode: 401,
+        message: 'Invalid credentials',
+        error: 'Unauthorized',
+      },
+    );
     await api
       .post('/auth/login')
       .send({ email: 'invalid', password: credentials.password })

@@ -8,6 +8,8 @@ import { AppModule } from '../dist/app.module.js';
 import { Student } from '../dist/students/entities/student.entity.js';
 import { Enrollment } from '../dist/enrollments/entities/enrollment.entity.js';
 import { Course } from '../dist/courses/entities/course.entity.js';
+import { JwtService } from '@nestjs/jwt';
+import { configureHttp } from '../dist/config/http.config.js';
 import { User } from '../dist/users/entities/user.entity.js';
 
 export async function createTestDatabase() {
@@ -42,7 +44,9 @@ export async function createTestDatabase() {
           .overrideProvider(getDataSourceToken())
           .useValue(source)
           .compile();
-        return module.createNestApplication({ logger: false });
+        const app = module.createNestApplication({ logger: false });
+        configureHttp(app);
+        return app;
       } catch (error) {
         await source.destroy();
         throw error;
@@ -87,4 +91,19 @@ export async function createTestApp({ seedCourses = false } = {}) {
     await database.cleanup();
     throw error;
   }
+}
+
+// CRUD regression fixtures use a real persisted identity with explicit admin role.
+export async function createCourseToken(app) {
+  const users = app.get(getDataSourceToken()).getRepository(User);
+  let user = await users.findOneBy({ email: 'fixture-admin@example.com' });
+  if (!user)
+    user = await users.save(
+      users.create({
+        email: 'fixture-admin@example.com',
+        role: 'admin',
+        passwordHash: 'fixture-only-no-login',
+      }),
+    );
+  return app.get(JwtService).signAsync({ sub: user.id, email: user.email });
 }

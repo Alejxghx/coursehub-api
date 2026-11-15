@@ -1,10 +1,9 @@
 import 'reflect-metadata';
 import { afterEach, beforeEach, describe, it } from 'node:test';
 import assert from 'node:assert/strict';
-import { createTestApp } from './database.mjs';
+import { createTestApp, createCourseToken } from './database.mjs';
 import { ValidationPipe } from '@nestjs/common';
 import request from 'supertest';
-import { JwtService } from '@nestjs/jwt';
 
 function enrollmentIds(enrollment) {
   return {
@@ -46,13 +45,7 @@ describe('Integración de Cursos, Estudiantes y Matrículas', () => {
   it('registra una matrícula y comparte los datos de Cursos y Estudiantes', async () => {
     const course = await api
       .post('/courses')
-      .set(
-        'Authorization',
-        'Bearer ' +
-          (await app
-            .get(JwtService)
-            .signAsync({ sub: 1, email: 'fixture@example.com' })),
-      )
+      .set('Authorization', 'Bearer ' + (await createCourseToken(app)))
       .send({ title: 'Curso de prueba', level: 'beginner' })
       .expect(201);
     const body = { studentId: 1, courseId: course.body.id };

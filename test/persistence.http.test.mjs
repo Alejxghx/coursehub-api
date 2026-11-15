@@ -4,8 +4,7 @@ import assert from 'node:assert/strict';
 import { ValidationPipe } from '@nestjs/common';
 import { getDataSourceToken } from '@nestjs/typeorm';
 import request from 'supertest';
-import { JwtService } from '@nestjs/jwt';
-import { createTestDatabase } from './database.mjs';
+import { createTestDatabase, createCourseToken } from './database.mjs';
 import { Enrollment } from '../dist/enrollments/entities/enrollment.entity.js';
 import { Student } from '../dist/students/entities/student.entity.js';
 
@@ -25,9 +24,7 @@ it('sesiones 9 y 10: persistencia, restricciones y flujo completo de entrega', a
     );
     await app.init();
     // Signed fixture identity; the session-18 suite tests real register/login.
-    courseToken = await app
-      .get(JwtService)
-      .signAsync({ sub: 1, email: 'fixture@example.com' });
+    courseToken = await createCourseToken(app);
     api = request(app.getHttpServer());
   };
   const restart = async () => {
@@ -107,7 +104,10 @@ it('sesiones 9 y 10: persistencia, restricciones y flujo completo de entrega', a
       );
     }
     await api.delete('/students/' + student.id).expect(409);
-    await api.delete('/courses/' + course.id).expect(409);
+    await api
+      .delete('/courses/' + course.id)
+      .set('Authorization', 'Bearer ' + courseToken)
+      .expect(409);
 
     // Bypass del servicio: las restricciones deben existir en PostgreSQL.
     const source = app.get(getDataSourceToken());
@@ -168,12 +168,14 @@ it('sesiones 9 y 10: persistencia, restricciones y flujo completo de entrega', a
     for (const level of ['beginner', 'intermediate', 'advanced']) {
       await api
         .patch('/courses/' + course.id)
+        .set('Authorization', 'Bearer ' + courseToken)
         .send({ level })
         .expect(200)
         .expect({ ...course, level });
     }
     await api
       .patch('/courses/' + course.id)
+      .set('Authorization', 'Bearer ' + courseToken)
       .send({ level: 'experto' })
       .expect(400);
     await api
@@ -195,7 +197,10 @@ it('sesiones 9 y 10: persistencia, restricciones y flujo completo de entrega', a
     await api.delete('/students/' + student.id).expect(204);
     await restart();
     await api.get('/students/' + student.id).expect(404);
-    await api.delete('/courses/' + course.id).expect(200);
+    await api
+      .delete('/courses/' + course.id)
+      .set('Authorization', 'Bearer ' + courseToken)
+      .expect(200);
   } finally {
     try {
       await app?.close();

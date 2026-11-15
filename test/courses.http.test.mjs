@@ -3,8 +3,7 @@ import { it } from 'node:test';
 import assert from 'node:assert/strict';
 import { ValidationPipe } from '@nestjs/common';
 import request from 'supertest';
-import { JwtService } from '@nestjs/jwt';
-import { createTestDatabase } from './database.mjs';
+import { createTestDatabase, createCourseToken } from './database.mjs';
 
 it('CRUD de cursos conserva datos después de reiniciar la aplicación', async () => {
   const database = await createTestDatabase();
@@ -22,9 +21,7 @@ it('CRUD de cursos conserva datos después de reiniciar la aplicación', async (
     );
     await app.init();
     // Signed fixture identity; the session-18 suite tests real register/login.
-    courseToken = await app
-      .get(JwtService)
-      .signAsync({ sub: 1, email: 'fixture@example.com' });
+    courseToken = await createCourseToken(app);
     api = request(app.getHttpServer());
   };
   try {
@@ -76,11 +73,13 @@ it('CRUD de cursos conserva datos después de reiniciar la aplicación', async (
       .expect(created.body);
     await api
       .patch('/courses/' + id)
+      .set('Authorization', 'Bearer ' + courseToken)
       .send({ level: 'intermediate' })
       .expect(200)
       .expect({ ...created.body, level: 'intermediate' });
     await api
       .patch('/courses/' + id)
+      .set('Authorization', 'Bearer ' + courseToken)
       .send({ level: 'invalid' })
       .expect(400);
     await api
@@ -96,6 +95,7 @@ it('CRUD de cursos conserva datos después de reiniciar la aplicación', async (
       .expect({ ...created.body, level: 'intermediate' });
     await api
       .delete('/courses/' + id)
+      .set('Authorization', 'Bearer ' + courseToken)
       .expect(200)
       .expect({ ...created.body, level: 'intermediate' });
     await app.close();
@@ -103,9 +103,13 @@ it('CRUD de cursos conserva datos después de reiniciar la aplicación', async (
     await api.get('/courses/' + id).expect(404);
     await api
       .patch('/courses/' + id)
+      .set('Authorization', 'Bearer ' + courseToken)
       .send({ title: 'No recrear' })
       .expect(404);
-    await api.delete('/courses/' + id).expect(404);
+    await api
+      .delete('/courses/' + id)
+      .set('Authorization', 'Bearer ' + courseToken)
+      .expect(404);
     await api.get('/courses/no-numero').expect(400);
     const remaining = await api.get('/courses').expect(200);
     assert.equal(remaining.body.items.length, 2);

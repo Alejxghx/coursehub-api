@@ -4,6 +4,7 @@ import { databaseConfig } from './database.config.js';
 import { validateEnvironment } from './environment.js';
 
 const local = {
+  CORS_ORIGINS: 'https://coursehub.example.edu',
   DATABASE_HOST: 'localhost',
   DATABASE_NAME: 'coursehub_test',
   DATABASE_USER: 'example_user',
@@ -39,6 +40,8 @@ describe('Configuración por ambientes', () => {
     { PORT: 65536 },
     { PORT: 0 },
     { NODE_ENV: 'staging' },
+    { CORS_ORIGINS: '*' },
+    { CORS_ORIGINS: 'https://example.com/path' },
     { JWT_SECRET: 'short' },
     { JWT_SECRET: ' '.repeat(40) },
     { JWT_SECRET: 'replace-with-a-long-random-local-secret' },

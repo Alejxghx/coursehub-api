@@ -1,15 +1,17 @@
 import {
   ConflictException,
   Injectable,
+  ForbiddenException,
   NotFoundException,
 } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { Repository } from 'typeorm';
 import { CreateCourseDto } from './dto/create-course.dto.js';
-import { UpdateCourseDto } from './dto/update-course.dto.js';
 import { postgresErrorCode } from '../common/postgres-error.js';
 import { Course } from './entities/course.entity.js';
 import type { CoursesQueryDto } from './dto/courses-query.dto.js';
+import type { AuthenticatedUser } from '../auth/types/jwt-payload.type.js';
+import { UserRole } from '../users/user-role.enum.js';
 
 @Injectable()
 export class CoursesService {
@@ -39,20 +41,20 @@ export class CoursesService {
     return course;
   }
 
-  create(dto: CreateCourseDto) {
+  create(dto: CreateCourseDto, actor: AuthenticatedUser) {
+    if (![UserRole.ADMIN, UserRole.TEACHER].includes(actor.role))
+      throw new ForbiddenException();
     // 6
-    const course = this.coursesRepository.create(dto);
+    const course = this.coursesRepository.create({
+      title: dto.title,
+      level: dto.level,
+      createdByUserId: actor.id,
+    });
     return this.coursesRepository.save(course);
   }
 
-  async update(id: number, dto: UpdateCourseDto) {
-    const course = await this.findOne(id); // 7
-    if (dto.title !== undefined) course.title = dto.title;
-    if (dto.level !== undefined) course.level = dto.level;
-    return this.coursesRepository.save(course); // 8
-  }
-
-  async remove(id: number) {
+  async remove(id: number, actor: AuthenticatedUser) {
+    if (actor.role !== UserRole.ADMIN) throw new ForbiddenException();
     const course = await this.findOne(id); // 9
     const deletedCourse = { ...course };
     try {

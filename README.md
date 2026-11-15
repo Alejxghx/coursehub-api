@@ -1,6 +1,84 @@
-# CourseHub API — Sesiones 9 a 18
+# CourseHub API — Hasta la semana 11
 
 Cursos, estudiantes y matrículas persistentes en PostgreSQL con NestJS y TypeORM.
+
+## Estado actual hasta la semana 11
+
+Implementadas las sesiones 9 a 22. La guía detallada explica qué se hizo por
+semana y para qué sirve cada carpeta y archivo:
+
+- [Documento Word](output/CoursehubAPI-hasta-Semana-11.docx).
+- [Guía editable](docs/semana-11.md).
+- [Colección Postman vigente](postman/semana-11.postman_collection.json).
+- [Comprobaciones actuales sin secretos](output/semana-11-verificacion.json).
+
+### Política de acceso vigente
+
+Registro y login son públicos. Toda cuenta nueva tiene rol `student` y el cuerpo
+de registro no puede cambiarlo. `GET /auth/me` exige JWT y devuelve `id`,
+`email` y el rol actual, consultado en PostgreSQL. El JWT sigue con payload
+mínimo `sub`, `email`, `iat` y `exp`; no se confía en un rol de cliente.
+
+En cursos: crear exige `teacher` o `admin`; actualizar exige administrador o
+docente propietario; eliminar exige `admin`. El propietario se toma de la
+identidad, no del cuerpo. Cursos antiguos sin propietario quedan a cargo de
+admin. Las lecturas de cursos y las rutas de estudiantes/matrículas siguen
+públicas dentro del alcance acordado. Las sesiones anteriores de este README
+describen etapas históricas, no reemplazan esta política.
+
+### Configuración y administración local
+
+Configura `CORS_ORIGINS=http://localhost:3001` (lista separada por comas si
+hay más clientes). En producción es obligatorio declararlo explícitamente.
+CORS restringe la lectura del navegador; Postman no aplica esa barrera y debe
+seguir requiriendo JWT/roles. Login admite cinco intentos por minuto por cliente;
+el sexto recibe `429` con `Retry-After`. El almacenamiento del limitador es
+local por proceso; para varias instancias se requiere una solución compartida.
+No se configura confianza automática en proxies.
+
+**Producción requiere HTTPS/TLS**, normalmente terminado en el proxy o plataforma.
+Los secretos y contraseñas viven solo en el entorno. No publiques tokens ni logs
+de cabeceras/cuerpos. El logger registra solo método, plantilla de ruta, estado,
+duración e identificador. Los errores tienen `statusCode`, `message`, `path`,
+`timestamp` y `requestId`; los inesperados devuelven 500 genérico sin traza.
+
+Después de registrar cuentas de práctica, asigna roles únicamente por la CLI
+local, con permisos de base de datos:
+
+```bash
+npm run user:role -- teacher11@example.com teacher
+npm run user:role -- admin11@example.com admin
+```
+
+No existe un endpoint público de promoción. El cambio se aplica a JWT previos
+porque la estrategia lee la cuenta actual; una cuenta eliminada recibe 401.
+Para bases antiguas con `synchronize=false`, revisa y aplica con respaldo
+`migrations/semana-10-roles-y-propiedad.sql` (esquema public predeterminado).
+No actives synchronize en producción. El script agrega rol student, columna de
+propietario nullable y clave foránea conservando filas existentes.
+
+### Arquitectura y comprobación
+
+`PATCH /courses/:id` usa controlador → UpdateCourseUseCase → CourseRepository
+(puerto) → TypeOrmCourseRepository → PostgreSQL. La regla no importa Nest, HTTP
+ni TypeORM; sus errores se traducen en el filtro global. No se reescribieron los
+otros módulos. `@CurrentUser()` y `@Roles()` centralizan identidad y metadata.
+
+Pasaron 92 pruebas: 39 unitarias, 52 HTTP/integración y 1 e2e. También se
+comprobaron 23 peticiones y 26 aserciones de la colección, la CLI, el sexto
+login (429) y la migración idempotente en tablas antiguas temporales.
+
+```bash
+npm run build
+npm run lint
+npm test
+npm run test:integration
+npm run test:week11
+npm run test:e2e
+```
+
+Las últimas tres comprobaciones requieren conexión PostgreSQL y JWT configurados;
+usan esquemas aislados que se eliminan al finalizar.
 
 ## Ejecutar
 

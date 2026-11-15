@@ -1,0 +1,391 @@
+{
+  "checkedAt": "2026-11-15T23:27:13.910Z",
+  "scope": "Semanas 5 a 11; comprobación actual de los cambios de semanas 10 y 11",
+  "testSummary": {
+    "unit": 39,
+    "httpIntegration": 52,
+    "e2e": 1,
+    "total": 92
+  },
+  "postman": {
+    "requests": 23,
+    "assertions": 26,
+    "execution": "Scripts ejecutados contra HTTP y PostgreSQL reales; no captura gráfica de Postman"
+  },
+  "schemaUpgrade": {
+    "legacyPreserved": true,
+    "defaultStudent": true,
+    "idempotent": true
+  },
+  "cases": [
+    {
+      "case": "Registrar Student",
+      "method": "POST",
+      "path": "/auth/register",
+      "status": 201,
+      "body": {
+        "id": 1,
+        "email": "student11@example.com",
+        "createdAt": "2026-11-15T23:27:12.308Z"
+      },
+      "requestId": "f3b993b1-a29e-4011-bc06-fbad2b838da0",
+      "responseTime": "193.71ms"
+    },
+    {
+      "case": "Registrar Owner",
+      "method": "POST",
+      "path": "/auth/register",
+      "status": 201,
+      "body": {
+        "id": 2,
+        "email": "teacher11@example.com",
+        "createdAt": "2026-11-15T23:27:12.498Z"
+      },
+      "requestId": "2997c133-1936-456b-a369-ad4d49582138",
+      "responseTime": "181.46ms"
+    },
+    {
+      "case": "Registrar Other",
+      "method": "POST",
+      "path": "/auth/register",
+      "status": 201,
+      "body": {
+        "id": 3,
+        "email": "teacher-other11@example.com",
+        "createdAt": "2026-11-15T23:27:12.684Z"
+      },
+      "requestId": "5c332cf4-ed50-4b8c-b277-88fdadfa80ad",
+      "responseTime": "182.84ms"
+    },
+    {
+      "case": "Registrar Admin",
+      "method": "POST",
+      "path": "/auth/register",
+      "status": 201,
+      "body": {
+        "id": 4,
+        "email": "admin11@example.com",
+        "createdAt": "2026-11-15T23:27:12.878Z"
+      },
+      "requestId": "749427be-8417-484a-bb7f-bd44cec1ee76",
+      "responseTime": "191.80ms"
+    },
+    {
+      "case": "Login Student - capturar Visualize",
+      "method": "POST",
+      "path": "/auth/login",
+      "status": 200,
+      "body": {
+        "accessToken": "[OMITIDO: credencial]",
+        "user": {
+          "id": 1,
+          "email": "student11@example.com",
+          "createdAt": "2026-11-15T23:27:12.308Z"
+        }
+      },
+      "requestId": "e974acf9-4744-4942-8550-a7dea103628e",
+      "responseTime": "191.35ms"
+    },
+    {
+      "case": "Login Owner - capturar Visualize",
+      "method": "POST",
+      "path": "/auth/login",
+      "status": 200,
+      "body": {
+        "accessToken": "[OMITIDO: credencial]",
+        "user": {
+          "id": 2,
+          "email": "teacher11@example.com",
+          "createdAt": "2026-11-15T23:27:12.498Z"
+        }
+      },
+      "requestId": "824d2f7c-1d15-4f88-a954-7861ea0e15aa",
+      "responseTime": "188.89ms"
+    },
+    {
+      "case": "Login Other - capturar Visualize",
+      "method": "POST",
+      "path": "/auth/login",
+      "status": 200,
+      "body": {
+        "accessToken": "[OMITIDO: credencial]",
+        "user": {
+          "id": 3,
+          "email": "teacher-other11@example.com",
+          "createdAt": "2026-11-15T23:27:12.684Z"
+        }
+      },
+      "requestId": "e2e8f2cd-55e2-49ae-8caa-40c391a7b6bb",
+      "responseTime": "177.67ms"
+    },
+    {
+      "case": "Login Admin - capturar Visualize",
+      "method": "POST",
+      "path": "/auth/login",
+      "status": 200,
+      "body": {
+        "accessToken": "[OMITIDO: credencial]",
+        "user": {
+          "id": 4,
+          "email": "admin11@example.com",
+          "createdAt": "2026-11-15T23:27:12.878Z"
+        }
+      },
+      "requestId": "35d0f986-d135-4aae-9e43-f48c324d24b7",
+      "responseTime": "177.85ms"
+    },
+    {
+      "case": "Perfil muestra el rol actual",
+      "method": "GET",
+      "path": "/auth/me",
+      "status": 200,
+      "body": {
+        "id": 2,
+        "email": "teacher11@example.com",
+        "role": "teacher"
+      },
+      "requestId": "4b75e354-8d39-4bd4-8bbe-e450da2284c7",
+      "responseTime": "0.09ms"
+    },
+    {
+      "case": "Crear curso como propietario",
+      "method": "POST",
+      "path": "/courses",
+      "status": 201,
+      "body": {
+        "id": 1,
+        "title": "Curso matriz semana 11",
+        "level": "beginner",
+        "createdByUserId": 2
+      },
+      "requestId": "12f2bbfe-aa95-44f5-acf9-7a70aa0a40e6",
+      "responseTime": "1.89ms"
+    },
+    {
+      "case": "Actualizar - Sin token",
+      "method": "PATCH",
+      "path": "/courses/1",
+      "status": 401,
+      "body": {
+        "statusCode": 401,
+        "message": "Unauthorized",
+        "path": "/courses/1",
+        "timestamp": "2026-11-15T23:27:13.840Z",
+        "requestId": "116ccb07-dd98-4061-9dae-ddcb34c6ce87"
+      },
+      "requestId": "116ccb07-dd98-4061-9dae-ddcb34c6ce87"
+    },
+    {
+      "case": "Actualizar - Estudiante",
+      "method": "PATCH",
+      "path": "/courses/1",
+      "status": 403,
+      "body": {
+        "statusCode": 403,
+        "message": "Forbidden resource",
+        "error": "Forbidden",
+        "path": "/courses/1",
+        "timestamp": "2026-11-15T23:27:13.843Z",
+        "requestId": "4ba258ef-90ed-48a5-8860-e482e27e19e7"
+      },
+      "requestId": "4ba258ef-90ed-48a5-8860-e482e27e19e7"
+    },
+    {
+      "case": "Actualizar - Docente ajeno",
+      "method": "PATCH",
+      "path": "/courses/1",
+      "status": 403,
+      "body": {
+        "statusCode": 403,
+        "message": "You cannot modify this course",
+        "path": "/courses/1",
+        "timestamp": "2026-11-15T23:27:13.846Z",
+        "requestId": "77ef8d3d-b385-4c4e-bd74-b26a4e07599a"
+      },
+      "requestId": "77ef8d3d-b385-4c4e-bd74-b26a4e07599a",
+      "responseTime": "1.08ms"
+    },
+    {
+      "case": "Actualizar - Docente propietario",
+      "method": "PATCH",
+      "path": "/courses/1",
+      "status": 200,
+      "body": {
+        "id": 1,
+        "title": "Actualización Docente propietario",
+        "level": "beginner",
+        "createdByUserId": 2
+      },
+      "requestId": "47a67d95-596f-4c0a-b9dd-3a9c3e6d8c71",
+      "responseTime": "3.61ms"
+    },
+    {
+      "case": "Actualizar - Administrador",
+      "method": "PATCH",
+      "path": "/courses/1",
+      "status": 200,
+      "body": {
+        "id": 1,
+        "title": "Actualización Administrador",
+        "level": "beginner",
+        "createdByUserId": 2
+      },
+      "requestId": "622768de-ea91-41d4-8697-01d29366f3e7",
+      "responseTime": "1.89ms"
+    },
+    {
+      "case": "ID inválido - 400 uniforme",
+      "method": "PATCH",
+      "path": "/courses/no-numero",
+      "status": 400,
+      "body": {
+        "statusCode": 400,
+        "message": "Validation failed (numeric string is expected)",
+        "error": "Bad Request",
+        "path": "/courses/no-numero",
+        "timestamp": "2026-11-15T23:27:13.863Z",
+        "requestId": "56b800f4-d4dd-4c67-9ae4-c632408b7659"
+      },
+      "requestId": "56b800f4-d4dd-4c67-9ae4-c632408b7659",
+      "responseTime": "0.32ms"
+    },
+    {
+      "case": "Curso inexistente - 404 uniforme",
+      "method": "PATCH",
+      "path": "/courses/2147483000",
+      "status": 404,
+      "body": {
+        "statusCode": 404,
+        "message": "Course not found",
+        "path": "/courses/2147483000",
+        "timestamp": "2026-11-15T23:27:13.866Z",
+        "requestId": "155ebf88-dd31-4006-b510-286108053534"
+      },
+      "requestId": "155ebf88-dd31-4006-b510-286108053534",
+      "responseTime": "0.49ms"
+    },
+    {
+      "case": "DTO inválido con identidad válida",
+      "method": "PATCH",
+      "path": "/courses/1",
+      "status": 400,
+      "body": {
+        "statusCode": 400,
+        "message": [
+          "level must be one of the following values: beginner, intermediate, advanced"
+        ],
+        "error": "Bad Request",
+        "path": "/courses/1",
+        "timestamp": "2026-11-15T23:27:13.869Z",
+        "requestId": "715fb856-37a5-40aa-89dc-15639b746c9d"
+      },
+      "requestId": "715fb856-37a5-40aa-89dc-15639b746c9d",
+      "responseTime": "0.50ms"
+    },
+    {
+      "case": "Propietario inyectado se rechaza",
+      "method": "PATCH",
+      "path": "/courses/1",
+      "status": 400,
+      "body": {
+        "statusCode": 400,
+        "message": [
+          "property createdByUserId should not exist"
+        ],
+        "error": "Bad Request",
+        "path": "/courses/1",
+        "timestamp": "2026-11-15T23:27:13.872Z",
+        "requestId": "9e9e62e7-6207-4684-9675-014865c49332"
+      },
+      "requestId": "9e9e62e7-6207-4684-9675-014865c49332",
+      "responseTime": "0.23ms"
+    },
+    {
+      "case": "Docente no puede borrar",
+      "method": "DELETE",
+      "path": "/courses/1",
+      "status": 403,
+      "body": {
+        "statusCode": 403,
+        "message": "Forbidden resource",
+        "error": "Forbidden",
+        "path": "/courses/1",
+        "timestamp": "2026-11-15T23:27:13.879Z",
+        "requestId": "f7de524d-8e17-48dc-8d4b-12634523c695"
+      },
+      "requestId": "f7de524d-8e17-48dc-8d4b-12634523c695"
+    },
+    {
+      "case": "Origen permitido tiene cabecera CORS",
+      "method": "GET",
+      "path": "/courses",
+      "status": 200,
+      "body": {
+        "items": [
+          {
+            "id": 1,
+            "title": "Actualización Administrador",
+            "level": "beginner",
+            "createdByUserId": 2
+          }
+        ],
+        "meta": {
+          "total": 1,
+          "page": 1,
+          "limit": 10,
+          "totalPages": 1
+        }
+      },
+      "requestId": "f1eb9bb9-8ee9-4c1b-b7a5-e2b11df12a88",
+      "responseTime": "1.38ms"
+    },
+    {
+      "case": "Origen ajeno no tiene cabecera CORS",
+      "method": "GET",
+      "path": "/courses",
+      "status": 200,
+      "body": {
+        "items": [
+          {
+            "id": 1,
+            "title": "Actualización Administrador",
+            "level": "beginner",
+            "createdByUserId": 2
+          }
+        ],
+        "meta": {
+          "total": 1,
+          "page": 1,
+          "limit": 10,
+          "totalPages": 1
+        }
+      },
+      "requestId": "6ef8ae26-aa47-40ca-ab00-141ad905a2eb",
+      "responseTime": "0.79ms"
+    },
+    {
+      "case": "Admin elimina curso creado por la colección",
+      "method": "DELETE",
+      "path": "/courses/1",
+      "status": 200,
+      "body": {
+        "id": 1,
+        "title": "Actualización Administrador",
+        "level": "beginner",
+        "createdByUserId": 2
+      },
+      "requestId": "7b705189-7229-4c46-8b8a-20db4006d0bf",
+      "responseTime": "2.52ms"
+    },
+    {
+      "case": "Rate limit intento 5",
+      "status": 401,
+      "retryAfter": null
+    },
+    {
+      "case": "Rate limit intento 6",
+      "status": 429,
+      "retryAfter": "60"
+    }
+  ]
+}

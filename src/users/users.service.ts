@@ -10,6 +10,10 @@ export class UsersService {
     @InjectRepository(User) private readonly usersRepository: Repository<User>,
   ) {}
 
+  findById(id: number): Promise<User | null> {
+    return this.usersRepository.findOneBy({ id });
+  }
+
   findByEmail(email: string) {
     return this.usersRepository.findOneBy({
       email: email.trim().toLowerCase(),

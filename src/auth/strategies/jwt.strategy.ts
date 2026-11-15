@@ -3,6 +3,7 @@ import { ConfigService } from '@nestjs/config';
 import { PassportStrategy } from '@nestjs/passport';
 import { isEmail } from 'class-validator';
 import { ExtractJwt, Strategy } from 'passport-jwt';
+import { UsersService } from '../../users/users.service.js';
 import type {
   AuthenticatedUser,
   JwtPayload,
@@ -10,7 +11,10 @@ import type {
 
 @Injectable()
 export class JwtStrategy extends PassportStrategy(Strategy) {
-  constructor(config: ConfigService) {
+  constructor(
+    config: ConfigService,
+    private readonly users: UsersService,
+  ) {
     super({
       jwtFromRequest: ExtractJwt.fromAuthHeaderAsBearerToken(),
       ignoreExpiration: false,
@@ -19,7 +23,9 @@ export class JwtStrategy extends PassportStrategy(Strategy) {
     });
   }
 
-  validate(payload: JwtPayload & { exp?: number }): AuthenticatedUser {
+  async validate(
+    payload: JwtPayload & { exp?: number },
+  ): Promise<AuthenticatedUser> {
     // Types alone do not validate JSON received inside a signed token.
     if (
       !payload ||
@@ -33,6 +39,10 @@ export class JwtStrategy extends PassportStrategy(Strategy) {
     }
 
     // Do not copy the entire payload, the database entity or its password hash.
-    return { id: payload.sub, email: payload.email };
+    // Read the current role from storage: old JWTs cannot preserve revoked roles.
+    const user = await this.users.findById(payload.sub);
+    if (!user || user.email !== payload.email)
+      throw new UnauthorizedException();
+    return { id: user.id, email: user.email, role: user.role };
   }
 }
