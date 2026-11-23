@@ -15,12 +15,12 @@
     "start:debug": "nest start --debug --watch",
     "start:prod": "node dist/main",
     "lint": "oxlint src/ test/",
-    "test": "vitest run",
-    "test:watch": "vitest",
+    "test": "node --experimental-vm-modules node_modules/jest/bin/jest.js",
+    "test:watch": "node --experimental-vm-modules node_modules/jest/bin/jest.js --watch",
     "test:auth": "npm run build && node --test test/auth.http.test.mjs",
     "test:auth:persistence": "npm run build && node --test test/auth.persistence.http.test.mjs",
-    "test:cov": "vitest run --coverage",
-    "test:debug": "vitest --inspect-brk --no-file-parallelism",
+    "test:cov": "node --experimental-vm-modules node_modules/jest/bin/jest.js --coverage",
+    "test:debug": "node --inspect-brk --experimental-vm-modules node_modules/jest/bin/jest.js --runInBand",
     "test:e2e": "vitest run --config ./vitest.config.e2e.ts",
     "test:students": "npm run build && node --test test/students.http.test.mjs",
     "test:enrollments": "npm run build && node --test test/enrollments.http.test.mjs",
@@ -31,7 +31,10 @@
     "verify:session17": "npm run build && node test/session-17-evidence.mjs",
     "test:jwt:guard": "npm run build && node --test test/jwt-guard.http.test.mjs",
     "test:week11": "npm run build && node --test test/week11.http.test.mjs",
-    "user:role": "node scripts/set-user-role.mjs"
+    "user:role": "node scripts/set-user-role.mjs",
+    "demo:week12": "node scripts/demonstrate-week12.mjs",
+    "test:types": "tsc --project tsconfig.spec.json",
+    "test:week12": "node --experimental-vm-modules node_modules/jest/bin/jest.js --runInBand update-course courses.controller"
   },
   "dependencies": {
     "@nestjs/common": "^12.0.1",
@@ -54,6 +57,7 @@
     "typeorm": "^1.1.1"
   },
   "devDependencies": {
+    "@jest/globals": "^30.5.2",
     "@nestjs/cli": "^12.0.0",
     "@nestjs/mau": "^0.2.6",
     "@nestjs/schematics": "^12.0.0",
@@ -63,11 +67,12 @@
     "@types/node": "^24.0.0",
     "@types/passport-jwt": "^4.0.1",
     "@types/supertest": "^7.0.0",
-    "@vitest/coverage-v8": "^4.1.2",
+    "jest": "^30.5.2",
     "oxlint": "^1.58.0",
     "prettier": "^3.4.2",
     "source-map-support": "^0.5.21",
     "supertest": "^7.0.0",
+    "ts-jest": "^29.4.15",
     "typescript": "^6.0.2",
     "vite-tsconfig-paths": "^5.1.4",
     "vitest": "^4.1.2"

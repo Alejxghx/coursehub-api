@@ -1,3 +1,4 @@
+import { describe, expect, it } from '@jest/globals';
 import { ConfigService } from '@nestjs/config';
 import { randomBytes } from 'node:crypto';
 import { databaseConfig } from './database.config.js';

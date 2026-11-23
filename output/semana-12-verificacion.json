@@ -1,0 +1,393 @@
+{
+  "semana": 12,
+  "sesiones": [
+    23,
+    24
+  ],
+  "base": "f390c74",
+  "alcance": "Pruebas unitarias aisladas; no certifica HTTP, guards, DTOs ni PostgreSQL.",
+  "entorno": {
+    "node": "v24.22.0",
+    "jest": "30.5.2",
+    "tsJest": "29.4.15",
+    "servidorHttp": false,
+    "conexionPostgreSQL": false,
+    "red": "Conexiones TCP, listeners, datagramas y fetch bloqueados durante la ejecución"
+  },
+  "pruebas": {
+    "suites": 5,
+    "aprobadas": 55,
+    "fallidas": 0,
+    "semana12": 23
+  },
+  "suites": [
+    {
+      "archivo": "src/courses/courses.controller.spec.ts",
+      "aprobadas": 8,
+      "casos": [
+        {
+          "nombre": "CoursesController · delegación sin HTTP delega el id, el DTO y la misma identidad autenticada al caso de uso",
+          "estado": "passed"
+        },
+        {
+          "nombre": "CoursesController · delegación sin HTTP propaga permiso rechazado sin convertirlo en un falso éxito",
+          "estado": "passed"
+        },
+        {
+          "nombre": "CoursesController · delegación sin HTTP propaga curso inexistente sin convertirlo en un falso éxito",
+          "estado": "passed"
+        },
+        {
+          "nombre": "CoursesController · delegación sin HTTP propaga fallo inesperado sin convertirlo en un falso éxito",
+          "estado": "passed"
+        },
+        {
+          "nombre": "CoursesController · delegación sin HTTP delega los filtros y la paginación sin modificarlos",
+          "estado": "passed"
+        },
+        {
+          "nombre": "CoursesController · delegación sin HTTP delega el identificador de consulta al servicio",
+          "estado": "passed"
+        },
+        {
+          "nombre": "CoursesController · delegación sin HTTP delega el DTO y la identidad de creación al servicio",
+          "estado": "passed"
+        },
+        {
+          "nombre": "CoursesController · delegación sin HTTP delega la eliminación con el id y la identidad del administrador",
+          "estado": "passed"
+        }
+      ]
+    },
+    {
+      "archivo": "src/courses/courses.service.spec.ts",
+      "aprobadas": 1,
+      "casos": [
+        {
+          "nombre": "CoursesService should be defined",
+          "estado": "passed"
+        }
+      ]
+    },
+    {
+      "archivo": "src/config/environment.spec.ts",
+      "aprobadas": 30,
+      "casos": [
+        {
+          "nombre": "Configuración por ambientes convierte puertos y aplica valores predeterminados",
+          "estado": "passed"
+        },
+        {
+          "nombre": "Configuración por ambientes rechaza la ausencia de DATABASE_HOST",
+          "estado": "passed"
+        },
+        {
+          "nombre": "Configuración por ambientes rechaza la ausencia de DATABASE_NAME",
+          "estado": "passed"
+        },
+        {
+          "nombre": "Configuración por ambientes rechaza la ausencia de DATABASE_USER",
+          "estado": "passed"
+        },
+        {
+          "nombre": "Configuración por ambientes rechaza la ausencia de DATABASE_PASSWORD",
+          "estado": "passed"
+        },
+        {
+          "nombre": "Configuración por ambientes rechaza la ausencia de JWT_SECRET",
+          "estado": "passed"
+        },
+        {
+          "nombre": "Configuración por ambientes rechaza configuración inválida: { DATABASE_PORT: 'not-a-number' }",
+          "estado": "passed"
+        },
+        {
+          "nombre": "Configuración por ambientes rechaza configuración inválida: { PORT: 65536 }",
+          "estado": "passed"
+        },
+        {
+          "nombre": "Configuración por ambientes rechaza configuración inválida: { PORT: 0 }",
+          "estado": "passed"
+        },
+        {
+          "nombre": "Configuración por ambientes rechaza configuración inválida: { NODE_ENV: 'staging' }",
+          "estado": "passed"
+        },
+        {
+          "nombre": "Configuración por ambientes rechaza configuración inválida: { CORS_ORIGINS: '*' }",
+          "estado": "passed"
+        },
+        {
+          "nombre": "Configuración por ambientes rechaza configuración inválida: { CORS_ORIGINS: 'https://example.com/path' }",
+          "estado": "passed"
+        },
+        {
+          "nombre": "Configuración por ambientes rechaza configuración inválida: { JWT_SECRET: 'short' }",
+          "estado": "passed"
+        },
+        {
+          "nombre": "Configuración por ambientes rechaza configuración inválida: { JWT_SECRET: '                                        ' }",
+          "estado": "passed"
+        },
+        {
+          "nombre": "Configuración por ambientes rechaza configuración inválida: { JWT_SECRET: 'replace-with-a-long-random-local-secret' }",
+          "estado": "passed"
+        },
+        {
+          "nombre": "Configuración por ambientes rechaza configuración inválida: { JWT_EXPIRES_IN: '900' }",
+          "estado": "passed"
+        },
+        {
+          "nombre": "Configuración por ambientes rechaza configuración inválida: { JWT_EXPIRES_IN: '0s' }",
+          "estado": "passed"
+        },
+        {
+          "nombre": "Configuración por ambientes rechaza configuración inválida: { JWT_EXPIRES_IN: '-1m' }",
+          "estado": "passed"
+        },
+        {
+          "nombre": "Configuración por ambientes rechaza configuración inválida: { JWT_EXPIRES_IN: 'never' }",
+          "estado": "passed"
+        },
+        {
+          "nombre": "Configuración por ambientes exige contraseña en producción",
+          "estado": "passed"
+        },
+        {
+          "nombre": "Configuración por ambientes exige contraseña en producción",
+          "estado": "passed"
+        },
+        {
+          "nombre": "Configuración por ambientes permite contraseña vacía en desarrollo local",
+          "estado": "passed"
+        },
+        {
+          "nombre": "Configuración por ambientes acepta expiración con unidad 1s",
+          "estado": "passed"
+        },
+        {
+          "nombre": "Configuración por ambientes acepta expiración con unidad 15m",
+          "estado": "passed"
+        },
+        {
+          "nombre": "Configuración por ambientes acepta expiración con unidad 2h",
+          "estado": "passed"
+        },
+        {
+          "nombre": "Configuración por ambientes acepta expiración con unidad 1d",
+          "estado": "passed"
+        },
+        {
+          "nombre": "Configuración por ambientes no incluye valores rechazados ni contraseñas en el error",
+          "estado": "passed"
+        },
+        {
+          "nombre": "Configuración por ambientes synchronize para development es true",
+          "estado": "passed"
+        },
+        {
+          "nombre": "Configuración por ambientes synchronize para test es false",
+          "estado": "passed"
+        },
+        {
+          "nombre": "Configuración por ambientes synchronize para production es false",
+          "estado": "passed"
+        }
+      ]
+    },
+    {
+      "archivo": "src/app.controller.spec.ts",
+      "aprobadas": 1,
+      "casos": [
+        {
+          "nombre": "AppController root should return the API status message",
+          "estado": "passed"
+        }
+      ]
+    },
+    {
+      "archivo": "src/courses/application/update-course.use-case.spec.ts",
+      "aprobadas": 15,
+      "casos": [
+        {
+          "nombre": "UpdateCourseUseCase · reglas de actualización permite al docente propietario actualizar título y nivel sin mutar el original",
+          "estado": "passed"
+        },
+        {
+          "nombre": "UpdateCourseUseCase · reglas de actualización permite al administrador actualizar un curso de otro docente",
+          "estado": "passed"
+        },
+        {
+          "nombre": "UpdateCourseUseCase · reglas de actualización permite al administrador actualizar un curso antiguo sin propietario",
+          "estado": "passed"
+        },
+        {
+          "nombre": "UpdateCourseUseCase · reglas de actualización conserva los campos omitidos al recibir solo título",
+          "estado": "passed"
+        },
+        {
+          "nombre": "UpdateCourseUseCase · reglas de actualización conserva los campos omitidos al recibir solo nivel",
+          "estado": "passed"
+        },
+        {
+          "nombre": "UpdateCourseUseCase · reglas de actualización conserva los campos omitidos al recibir DTO vacío",
+          "estado": "passed"
+        },
+        {
+          "nombre": "UpdateCourseUseCase · reglas de actualización rechaza un curso inexistente sin intentar guardar",
+          "estado": "passed"
+        },
+        {
+          "nombre": "UpdateCourseUseCase · reglas de actualización rechaza al docente ajeno antes de guardar",
+          "estado": "passed"
+        },
+        {
+          "nombre": "UpdateCourseUseCase · reglas de actualización rechaza al estudiante con el id del propietario antes de guardar",
+          "estado": "passed"
+        },
+        {
+          "nombre": "UpdateCourseUseCase · reglas de actualización rechaza al estudiante ajeno antes de guardar",
+          "estado": "passed"
+        },
+        {
+          "nombre": "UpdateCourseUseCase · reglas de actualización un docente no se apropia de un curso antiguo sin propietario",
+          "estado": "passed"
+        },
+        {
+          "nombre": "UpdateCourseUseCase · reglas de actualización ignora id y propietario inyectados incluso fuera de HTTP",
+          "estado": "passed"
+        },
+        {
+          "nombre": "UpdateCourseUseCase · reglas de actualización devuelve el resultado confirmado por el repositorio",
+          "estado": "passed"
+        },
+        {
+          "nombre": "UpdateCourseUseCase · reglas de actualización propaga un fallo de lectura y no guarda",
+          "estado": "passed"
+        },
+        {
+          "nombre": "UpdateCourseUseCase · reglas de actualización propaga un fallo al guardar sin inventar una actualización exitosa",
+          "estado": "passed"
+        }
+      ]
+    }
+  ],
+  "cobertura": {
+    "alcance": [
+      "src/courses/application/update-course.use-case.ts",
+      "src/courses/courses.controller.ts"
+    ],
+    "total": {
+      "lines": {
+        "total": 104,
+        "covered": 104,
+        "skipped": 0,
+        "pct": 100
+      },
+      "statements": {
+        "total": 104,
+        "covered": 104,
+        "skipped": 0,
+        "pct": 100
+      },
+      "functions": {
+        "total": 10,
+        "covered": 10,
+        "skipped": 0,
+        "pct": 100
+      },
+      "branches": {
+        "total": 24,
+        "covered": 19,
+        "skipped": 0,
+        "pct": 79.16
+      },
+      "branchesTrue": {
+        "total": 0,
+        "covered": 0,
+        "skipped": 0,
+        "pct": 100
+      }
+    },
+    "src/courses/courses.controller.ts": {
+      "lines": {
+        "total": 72,
+        "covered": 72,
+        "skipped": 0,
+        "pct": 100
+      },
+      "functions": {
+        "total": 7,
+        "covered": 7,
+        "skipped": 0,
+        "pct": 100
+      },
+      "statements": {
+        "total": 72,
+        "covered": 72,
+        "skipped": 0,
+        "pct": 100
+      },
+      "branches": {
+        "total": 12,
+        "covered": 7,
+        "skipped": 0,
+        "pct": 58.33
+      }
+    },
+    "src/courses/application/update-course.use-case.ts": {
+      "lines": {
+        "total": 32,
+        "covered": 32,
+        "skipped": 0,
+        "pct": 100
+      },
+      "functions": {
+        "total": 3,
+        "covered": 3,
+        "skipped": 0,
+        "pct": 100
+      },
+      "statements": {
+        "total": 32,
+        "covered": 32,
+        "skipped": 0,
+        "pct": 100
+      },
+      "branches": {
+        "total": 12,
+        "covered": 12,
+        "skipped": 0,
+        "pct": 100
+      }
+    }
+  },
+  "demostracion": {
+    "original": {
+      "passed": 1
+    },
+    "mutation": {
+      "failedAsExpected": 1,
+      "rule": "Se omitió la comparación del propietario"
+    },
+    "restored": {
+      "passed": 23,
+      "sourceUnchanged": true
+    },
+    "sourceSha256": "fc698107b57b54d4d8836246543fa74d0d857a242f56ac7c3839a7672539ba10"
+  },
+  "comprobaciones": {
+    "build": "correcto",
+    "lint": "correcto",
+    "tiposUnitarios": "correcto",
+    "sintaxisDemostracion": "correcto",
+    "diffSinErroresDeEspacios": "correcto",
+    "codigoDeProduccionSinCambios": true
+  },
+  "fuentes": [
+    "https://epanchanaf.github.io/nestjs-course/semana-12/objetivos",
+    "https://epanchanaf.github.io/nestjs-course/semana-12/sesion-23",
+    "https://epanchanaf.github.io/nestjs-course/semana-12/sesion-24",
+    "https://epanchanaf.github.io/nestjs-course/semana-12/proyecto-integrador"
+  ]
+}

@@ -1,6 +1,39 @@
-# CourseHub API — Hasta la semana 11
+# CourseHub API — Hasta la semana 12
 
 Cursos, estudiantes y matrículas persistentes en PostgreSQL con NestJS y TypeORM.
+
+## Semana 12 · Pruebas unitarias con Jest
+
+Completadas las sesiones 23 y 24 y el proyecto integrador:
+55 pruebas unitarias en 5 suites. Las dos unidades de esta semana tienen
+23 casos: 15 para autorización de propiedad y errores de `UpdateCourseUseCase`,
+y 8 para delegación y propagación de errores en `CoursesController`.
+Se usan repositorios, servicio y caso de uso simulados según la unidad probada;
+no se necesita `.env`, PostgreSQL, JWT ni un servidor HTTP.
+
+```bash
+npm ci
+npm test -- --runInBand
+npm test -- update-course
+npm run test:week12
+npm run test:types
+npm run test:cov -- --runInBand
+npm run demo:week12
+```
+
+La demostración elimina temporalmente la comprobación del propietario, verifica
+que la prueba de docente ajeno falla, restaura el archivo y vuelve a comprobar
+los 23 casos. Déjala terminar sin editar ese archivo simultáneamente.
+La cobertura del caso de uso es 100 %; la cobertura conjunta de ramas de las
+dos unidades es 79,16 %. El informe HTML está en `coverage/index.html`.
+
+- [Qué cambió, archivos, reglas y explicación de cobertura](docs/semana-12.md).
+- [Resultados de ejecución y demostración](output/semana-12-verificacion.json).
+
+`npm test` ahora usa Jest, como pide el curso. Las pruebas e2e anteriores siguen
+con Vitest y su comando independiente. Los resultados de la semana 11 que
+siguen documentan esa entrega; esta semana no vuelve a certificar HTTP ni la
+base de datos.
 
 ## Estado actual hasta la semana 11
 

@@ -1,3 +1,4 @@
+import { beforeEach, describe, expect, it } from '@jest/globals';
 import { Test, TestingModule } from '@nestjs/testing';
 import { CoursesService } from './courses.service.js';
 import { getRepositoryToken } from '@nestjs/typeorm';
